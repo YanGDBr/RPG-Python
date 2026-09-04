@@ -7,6 +7,14 @@ from datetime import datetime
 from re import search, sub
 from math import trunc
 from threading import Thread
+
+if os.name == 'nt':
+  import msvcrt as _msvcrt
+  _msvcrt_getch_original = _msvcrt.getch
+  def _msvcrt_getch_decodificado():
+    return _msvcrt_getch_original().decode('latin-1')
+  _msvcrt.getch = _msvcrt_getch_decodificado
+
 from getkey import getkey, keys
 
 
