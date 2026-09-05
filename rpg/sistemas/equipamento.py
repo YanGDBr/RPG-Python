@@ -33,16 +33,28 @@ def resolver_armadura(personagem):
   return ARMADURAS.get(personagem.armadura_equipada) or ARMADURAS_UNICAS.get(personagem.armadura_equipada)
 
 
-def resolver_acessorio(personagem):
-  return ACESSORIOS.get(personagem.acessorio_equipado) or ACESSORIOS_UNICOS.get(personagem.acessorio_equipado)
+def resolver_acessorios(personagem):
+  """Todos os acessórios equipados, já resolvidos — o personagem tem, por
+  padrão, 1 slot, e pode comprar até 3 a mais (ver CUSTOS_SLOT_ACESSORIO)."""
+  resolvidos = []
+  for nome in personagem.acessorios_equipados:
+    acessorio = ACESSORIOS.get(nome) or ACESSORIOS_UNICOS.get(nome)
+    if acessorio:
+      resolvidos.append(acessorio)
+  return resolvidos
+
+
+def _soma_acessorios(personagem, efeito):
+  """A maioria dos bônus de acessório é aditiva — com vários slots, dá pra
+  empilhar o mesmo tipo de efeito de acessórios diferentes."""
+  return sum(a.valor for a in resolver_acessorios(personagem) if a.efeito == efeito)
 
 
 def vida_maxima_efetiva(personagem):
   base = personagem.vida_maxima
   armadura = resolver_armadura(personagem)
   bonus_percentual = (armadura.bonus_vida_percentual if armadura else 0) + personagem.encantamento_armadura
-  acessorio = resolver_acessorio(personagem)
-  bonus_fixo = acessorio.valor if acessorio and acessorio.efeito == 'mana_vida' else 0
+  bonus_fixo = _soma_acessorios(personagem, 'mana_vida')
   return round(base + base * bonus_percentual / 100) + bonus_fixo
 
 
@@ -50,52 +62,48 @@ def mana_maxima_efetiva(personagem):
   base = personagem.mana_maxima
   armadura = resolver_armadura(personagem)
   bonus_percentual = armadura.bonus_mana_percentual if armadura else 0
-  acessorio = resolver_acessorio(personagem)
-  bonus_fixo = acessorio.valor if acessorio and acessorio.efeito == 'mana_vida' else 0
+  bonus_fixo = _soma_acessorios(personagem, 'mana_vida')
   return round(base + base * bonus_percentual / 100) + bonus_fixo
 
 
 def chance_critico_extra_acessorio(personagem):
-  acessorio = resolver_acessorio(personagem)
-  return acessorio.valor if acessorio and acessorio.efeito == 'critico' else 0
+  return _soma_acessorios(personagem, 'critico')
 
 
 def chance_boss_extra_acessorio(personagem):
-  acessorio = resolver_acessorio(personagem)
-  return acessorio.valor if acessorio and acessorio.efeito == 'boss' else 0
+  """O efeito 'boss' guarda o divisor final da rolagem de achar chefe (menor
+  = mais frequente) — com vários acessórios desse tipo, vale o melhor (o
+  menor divisor), nunca soma (não faria sentido somar divisores)."""
+  valores = [a.valor for a in resolver_acessorios(personagem) if a.efeito == 'boss']
+  return min(valores) if valores else 0
 
 
 def reducao_dano_acessorio(personagem):
-  acessorio = resolver_acessorio(personagem)
-  return acessorio.valor if acessorio and acessorio.efeito == 'reducao_dano' else 0
+  return _soma_acessorios(personagem, 'reducao_dano')
 
 
 def esquiva_flat_acessorio(personagem):
-  acessorio = resolver_acessorio(personagem)
-  return acessorio.valor if acessorio and acessorio.efeito == 'esquiva_flat' else 0
+  return _soma_acessorios(personagem, 'esquiva_flat')
 
 
 def exp_extra_acessorio(personagem):
-  acessorio = resolver_acessorio(personagem)
-  return acessorio.valor if acessorio and acessorio.efeito == 'exp_extra' else 0
+  return _soma_acessorios(personagem, 'exp_extra')
 
 
 def ouro_extra_acessorio(personagem):
-  acessorio = resolver_acessorio(personagem)
-  return acessorio.valor if acessorio and acessorio.efeito == 'ouro_extra' else 0
+  return _soma_acessorios(personagem, 'ouro_extra')
 
 
 def regeneracao_acessorio(personagem):
-  acessorio = resolver_acessorio(personagem)
-  return acessorio.valor if acessorio and acessorio.efeito == 'regeneracao' else 0
+  return _soma_acessorios(personagem, 'regeneracao')
 
 
-def efeito_inicial_de_batalha_acessorio(personagem):
-  """Anel de Fogo: aplica Queimadura no monstro assim que a batalha começa."""
-  acessorio = resolver_acessorio(personagem)
-  if acessorio and acessorio.efeito == 'queimadura_inicial':
-    return ('Queimadura', acessorio.valor)
-  return None
+def efeitos_iniciais_de_batalha_acessorios(personagem):
+  """Anel de Fogo (e qualquer outro acessório igual): aplica Queimadura no
+  monstro assim que a batalha começa — devolve um por acessório equipado com
+  esse efeito, já que agora pode haver mais de um slot."""
+  return [('Queimadura', a.valor) for a in resolver_acessorios(personagem)
+          if a.efeito == 'queimadura_inicial']
 
 
 def resumo_status(personagem):

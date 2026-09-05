@@ -4,21 +4,25 @@ import random
 import string
 import time
 
-from ..config import (BONUS_ETEN_PERCENTUAL, CUSTO_RENOVAR_QUADRO,
-                       ENCANTAMENTO_CUSTO_PRATA_BASE, ENCANTAMENTO_INCREMENTO,
-                       ENCANTAMENTO_MATERIAL, ENCANTAMENTO_MAXIMO_ARMADURA,
-                       ENCANTAMENTO_MAXIMO_ARMA, MAX_MISSOES_ATIVAS,
+from ..config import (BONUS_ETEN_PERCENTUAL, CHANCE_CRITICO_MAXIMA, CICLO_ELEMENTAL,
+                       CUSTO_RENOVAR_QUADRO, CUSTOS_SLOT_ACESSORIO, ENCANTAMENTO_CUSTO_PRATA_BASE,
+                       ENCANTAMENTO_INCREMENTO, ENCANTAMENTO_MATERIAL, ENCANTAMENTO_MAXIMO_ARMADURA,
+                       ENCANTAMENTO_MAXIMO_ARMA, FOME_MAXIMA, MAX_MISSOES_ATIVAS,
+                       MULTIPLICADOR_FRAQUEZA_CICLO, MULTIPLICADOR_FRAQUEZA_ELEMENTAL,
+                       MULTIPLICADOR_RESISTENCIA_CICLO, MULTIPLICADOR_RESISTENCIA_ELEMENTAL,
                        REPUTACAO_TIERS, Cor)
 from ..dados.dungeons import DUNGEONS
 from ..dados.especializacoes import (ESPECIALIZACOES, ESPECIALIZACOES_POR_CLASSE,
                                       NIVEL_MINIMO_ESPECIALIZACAO)
 from ..dados.habilidades import HABILIDADES, HABILIDADES_DESBLOQUEAVEIS
+from ..dados.itens import (ACESSORIOS, ACESSORIOS_UNICOS, ARMADURAS, ARMADURAS_UNICAS, ARMAS,
+                            ARMAS_LENDARIAS)
 from ..dados.receitas import RECEITAS
 from ..entrada import aguardar_leitura
 from ..entrada import menu as menu_padrao
 from ..entrada import pedir_numero, perguntar_sim_nao
 from ..interface import limpar_tela, ljust_visivel
-from . import crafting as sistema_crafting
+from . import batalha, crafting as sistema_crafting
 from . import economia, equipamento, inventario
 
 
@@ -129,8 +133,23 @@ def tela_status(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
-              f'Poder: {personagem.poder}   Esquiva: {personagem.esquiva}%   Sorte: {personagem.sorte}\n'
+    vida_max = equipamento.vida_maxima_efetiva(personagem)
+    mana_max = equipamento.mana_maxima_efetiva(personagem)
+    critico = min(CHANCE_CRITICO_MAXIMA, batalha.chance_de_critico_base(personagem))
+    linhas = [
+      f'{personagem.raca} {personagem.classe} — Nv.{personagem.nivel} '
+      f'(Exp {personagem.exp}/{personagem.exp_para_subir})',
+      f'Vida:      {Cor.VERMELHO}{personagem.vida}/{vida_max}{Cor.RESET}',
+      f'Mana:      {Cor.AZUL}{personagem.mana}/{mana_max}{Cor.RESET}',
+      f'Poder:     {personagem.poder}',
+      f'Esquiva:   {personagem.esquiva}%',
+      f'Sorte:     {personagem.sorte}',
+      f'Crítico:   {Cor.AMARELO}{critico}%{Cor.RESET}',
+      f'Fome:      {personagem.fome}/{FOME_MAXIMA}',
+      f'Postura:   {personagem.postura}',
+    ]
+    quadro = _desenhar_quadro(f'STATUS DE {personagem.nome}', linhas)
+    titulo = (f'{quadro}\n\n'
               f'{Cor.BRANCO}Pontos de status disponíveis: {personagem.pontos_status}{Cor.RESET}')
     opcoes = ['+5 Vida máxima', '+5 Mana máxima', '+1 Poder', '+1 Sorte (crítico)', 'Equipar habilidades']
     escolha = ler_acao(titulo, opcoes)
@@ -156,21 +175,79 @@ def tela_status(personagem, escrever=print, ler_acao=None, aguardar=None):
       tela_equipar_habilidades(personagem, escrever, ler_acao, aguardar)
 
 
+_NOME_MOEDA = {'moeda_cobre': 'cobres', 'moeda_prata': 'pratas', 'moeda_ouro': 'ouros'}
+
+
+def _descricao_arma(nome):
+  arma = ARMAS.get(nome) or next((a for a in ARMAS_LENDARIAS.values() if a.nome == nome), None)
+  return f'{arma.bonus_poder_percentual}% poder, {arma.elemento}' if arma else ''
+
+
+def _descricao_armadura(nome):
+  armadura = ARMADURAS.get(nome) or ARMADURAS_UNICAS.get(nome)
+  return armadura.descricao if armadura else ''
+
+
+def _descricao_acessorio(nome):
+  acessorio = ACESSORIOS.get(nome) or ACESSORIOS_UNICOS.get(nome)
+  return acessorio.descricao if acessorio else ''
+
+
+def _max_slots_acessorio(personagem):
+  return 1 + personagem.slots_acessorio_comprados
+
+
+def _comprar_slot_acessorio(personagem, escrever, aguardar):
+  if personagem.slots_acessorio_comprados >= len(CUSTOS_SLOT_ACESSORIO):
+    escrever(f'{Cor.CIANO}Você já tem o máximo de slots de acessório.{Cor.RESET}')
+    aguardar()
+    return
+  custo, campo_moeda = CUSTOS_SLOT_ACESSORIO[personagem.slots_acessorio_comprados]
+  saldo = getattr(personagem, campo_moeda)
+  if saldo < custo:
+    escrever(f'{Cor.VERMELHO}Você não tem {custo} {_NOME_MOEDA[campo_moeda]} suficientes.{Cor.RESET}')
+    aguardar()
+    return
+  setattr(personagem, campo_moeda, saldo - custo)
+  personagem.slots_acessorio_comprados += 1
+  escrever(f'{Cor.VERDE}Novo slot de acessório desbloqueado! Total: '
+           f'{_max_slots_acessorio(personagem)}.{Cor.RESET}')
+  aguardar()
+
+
 def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
     arma = equipamento.resolver_arma(personagem)
     armadura = equipamento.resolver_armadura(personagem)
-    acessorio = equipamento.resolver_acessorio(personagem)
-    titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
-              f'Arma: {Cor.BRANCO}{arma.nome}{Cor.RESET} ({arma.bonus_poder_percentual}% poder)\n'
-              f'Armadura: {Cor.BRANCO}{armadura.nome if armadura else "Nenhuma"}{Cor.RESET}\n'
-              f'Acessório: {Cor.BRANCO}{acessorio.nome if acessorio else "Nenhum"}{Cor.RESET}')
+    acessorios = equipamento.resolver_acessorios(personagem)
+    max_slots = _max_slots_acessorio(personagem)
 
-    opcoes = ([f'Equipar arma: {n}' for n in personagem.equipamentos_guardados] +
-              [f'Equipar armadura: {n}' for n in personagem.armaduras_guardadas] +
-              [f'Equipar acessório: {n}' for n in personagem.acessorios_guardados])
+    linhas_acessorios = ([f'  - {a.nome}: {a.descricao}' for a in acessorios]
+                         if acessorios else ['  Nenhum equipado'])
+    titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
+              f'Arma: {Cor.BRANCO}{arma.nome}{Cor.RESET} '
+              f'({arma.bonus_poder_percentual}% poder, {arma.elemento})\n'
+              f'Armadura: {Cor.BRANCO}{armadura.nome if armadura else "Nenhuma"}{Cor.RESET}'
+              f'{f" ({armadura.descricao})" if armadura else ""}\n'
+              f'Acessórios ({len(acessorios)}/{max_slots}):\n' + '\n'.join(linhas_acessorios))
+
+    total_armas = len(personagem.equipamentos_guardados)
+    total_armaduras = len(personagem.armaduras_guardadas)
+    total_guardados_acessorio = len(personagem.acessorios_guardados)
+
+    opcoes = ([f'Equipar arma: {n} ({_descricao_arma(n)})' for n in personagem.equipamentos_guardados] +
+              [f'Equipar armadura: {n} ({_descricao_armadura(n)})' for n in personagem.armaduras_guardadas] +
+              [f'Equipar acessório: {n} ({_descricao_acessorio(n)})'
+               for n in personagem.acessorios_guardados] +
+              [f'Desequipar acessório: {n}' for n in personagem.acessorios_equipados])
+    indice_comprar_slot = None
+    if personagem.slots_acessorio_comprados < len(CUSTOS_SLOT_ACESSORIO):
+      custo, campo_moeda = CUSTOS_SLOT_ACESSORIO[personagem.slots_acessorio_comprados]
+      indice_comprar_slot = len(opcoes)
+      opcoes.append(f'Comprar slot de acessório extra — {custo} {_NOME_MOEDA[campo_moeda]}')
+
     if not opcoes:
       # Antes isso só mostrava um erro e saía, sem nunca exibir o `titulo`
       # (que tem o equipamento atual) — parecia que o equipar tinha falhado,
@@ -184,9 +261,6 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
     if escolha is None:
       return
 
-    total_armas = len(personagem.equipamentos_guardados)
-    total_armaduras = len(personagem.armaduras_guardadas)
-
     if escolha < total_armas:
       novo = personagem.equipamentos_guardados.pop(escolha)
       antigo = personagem.arma_equipada
@@ -199,12 +273,31 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
       personagem.armadura_equipada = novo
       if antigo:
         personagem.armaduras_guardadas.append(antigo)
-    else:
-      novo = personagem.acessorios_guardados.pop(escolha - total_armas - total_armaduras)
-      antigo = personagem.acessorio_equipado
-      personagem.acessorio_equipado = novo
-      if antigo:
+    elif escolha < total_armas + total_armaduras + total_guardados_acessorio:
+      indice_guardado = escolha - total_armas - total_armaduras
+      novo = personagem.acessorios_guardados[indice_guardado]
+      if len(personagem.acessorios_equipados) < max_slots:
+        personagem.acessorios_guardados.pop(indice_guardado)
+        personagem.acessorios_equipados.append(novo)
+      else:
+        escolha_slot = ler_acao('Todos os slots de acessório estão ocupados. Qual remover?',
+                                 personagem.acessorios_equipados)
+        if escolha_slot is None:
+          continue
+        personagem.acessorios_guardados.pop(indice_guardado)
+        antigo = personagem.acessorios_equipados.pop(escolha_slot)
+        personagem.acessorios_equipados.append(novo)
         personagem.acessorios_guardados.append(antigo)
+    elif indice_comprar_slot is not None and escolha == indice_comprar_slot:
+      _comprar_slot_acessorio(personagem, escrever, aguardar)
+      continue
+    else:
+      indice_equipado = (escolha - total_armas - total_armaduras - total_guardados_acessorio)
+      removido = personagem.acessorios_equipados.pop(indice_equipado)
+      personagem.acessorios_guardados.append(removido)
+      escrever(f'{Cor.AMARELO}{removido} desequipado.{Cor.RESET}')
+      aguardar()
+      continue
     escrever(f'{Cor.VERDE}Equipado com sucesso!{Cor.RESET}')
     aguardar()
 
@@ -212,17 +305,36 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
 _LARGURA_QUADRO = 58
 
 
-def _linha_quadro(texto):
-  return f'|{ljust_visivel(" " + texto, _LARGURA_QUADRO - 2)}|'
+def _linha_quadro(texto, largura=_LARGURA_QUADRO):
+  return f'|{ljust_visivel(" " + texto, largura - 2)}|'
 
 
-def _desenhar_quadro(titulo, linhas):
-  borda = '+' + '-' * (_LARGURA_QUADRO - 2) + '+'
-  corpo = [borda, _linha_quadro(f'{Cor.BRANCO}{titulo}{Cor.RESET}'), borda]
+def _desenhar_quadro(titulo, linhas, largura=_LARGURA_QUADRO):
+  borda = '+' + '-' * (largura - 2) + '+'
+  corpo = [borda, _linha_quadro(f'{Cor.BRANCO}{titulo}{Cor.RESET}', largura), borda]
   for linha in linhas:
-    corpo.append(_linha_quadro(linha))
+    corpo.append(_linha_quadro(linha, largura))
   corpo.append(borda)
   return '\n'.join(corpo)
+
+
+def tela_guia_elemental(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  ciclo = ' -> '.join(CICLO_ELEMENTAL + [CICLO_ELEMENTAL[0]])
+  linhas = [
+    'Fraqueza/resistência explícita de um monstro sempre valem mais que a',
+    'roda genérica abaixo (ver a descrição de cada monstro em batalha):',
+    f'  Fraqueza explícita: dano x{MULTIPLICADOR_FRAQUEZA_ELEMENTAL}',
+    f'  Resistência explícita: dano x{MULTIPLICADOR_RESISTENCIA_ELEMENTAL}',
+    '',
+    'Sem fraqueza/resistência explícita, cada elemento é forte contra o',
+    'próximo desta roda, e fraco contra o anterior:',
+    f'  {ciclo}',
+    f'  Vantagem da roda: dano x{MULTIPLICADOR_FRAQUEZA_CICLO}',
+    f'  Desvantagem da roda: dano x{MULTIPLICADOR_RESISTENCIA_CICLO}',
+  ]
+  quadro = _desenhar_quadro('Guia Elemental', linhas, largura=72)
+  ler_acao(quadro, ['Voltar'], com_voltar=False)
 
 
 def _resumo_missoes_ativas(personagem):

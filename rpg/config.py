@@ -112,3 +112,30 @@ INTERVALO_AUTOSAVE_SEGUNDOS = 120
 # Multiplicador único de experiência — se aplica a tudo (monstro, missão da
 # guilda), pra deixar o nível subir mais rápido sem reescrever cada monstro.
 MULTIPLICADOR_EXP_GLOBAL = 2.0
+
+# Fome só desgasta 1 a cada N ações reais (batalha/exploração), em vez de
+# toda vez — estava caindo rápido demais.
+ACOES_POR_DESGASTE_FOME = 3
+
+# Chance de qualquer efeito de status (habilidade do jogador, ataque de
+# monstro, ou acessório) realmente grudar — nem todo golpe deveria garantir
+# Queimadura/Paralisia/etc, senão vira injusto pra quem está do lado que apanha.
+CHANCE_APLICAR_EFEITO_STATUS = 50   # em porcentagem
+
+# Slots extras de acessório: começa com 1, cada compra libera mais um (até 3
+# compras = 4 no total). Cada slot custa uma moeda de tier mais alto que o
+# anterior — a moeda destrava dá o preço, e "fica cada vez mais caro" vem de
+# subir de tier em vez de só aumentar o número.
+CUSTOS_SLOT_ACESSORIO = [
+  (500, 'moeda_cobre'),
+  (50, 'moeda_prata'),
+  (1, 'moeda_ouro'),
+]
+MAX_SLOTS_ACESSORIO = 1 + len(CUSTOS_SLOT_ACESSORIO)
+
+# Níveis de perigo dos pontos de interesse de um andar (calculados pela
+# distância até a entrada — sem precisar de dado extra por mapa). Só mudam a
+# cor mostrada e o que se pode encontrar ali.
+NIVEL_PERIGO_VERDE = 1
+NIVEL_PERIGO_AMARELO = 2
+NIVEL_PERIGO_VERMELHO = 3

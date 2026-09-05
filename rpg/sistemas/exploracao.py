@@ -10,7 +10,8 @@ que existia antes, onde todo andar era visualmente idêntico.
 
 import random
 
-from ..config import CHANCE_MONSTRO_ELITE, Cor
+from ..config import (CHANCE_MONSTRO_ELITE, NIVEL_PERIGO_AMARELO, NIVEL_PERIGO_VERDE,
+                       NIVEL_PERIGO_VERMELHO, Cor)
 from ..dados.dungeons import DUNGEONS
 from ..dados.mapas import MAPAS
 from ..dados.monstros import MONSTROS
@@ -40,7 +41,35 @@ def _encontrar_entrada(mapa):
   raise ValueError('mapa sem entrada (E)')
 
 
+_COR_PERIGO = {
+  NIVEL_PERIGO_VERDE: Cor.VERDE,
+  NIVEL_PERIGO_AMARELO: Cor.AMARELO,
+  NIVEL_PERIGO_VERMELHO: Cor.VERMELHO,
+}
+
+
+def _calcular_niveis_perigo(mapa):
+  """Cada ponto de interesse (`?`) do andar recebe um dos 3 níveis de perigo,
+  calculado pela distância até a entrada (mais longe, mais perigoso) — não
+  precisa de nenhum dado extra por mapa, e continua funcionando pra qualquer
+  andar novo que a gente desenhar."""
+  entrada = tuple(_encontrar_entrada(mapa))
+  pontos = [(y, x) for y, linha in enumerate(mapa) for x, c in enumerate(linha) if c == '?']
+  pontos.sort(key=lambda p: abs(p[0] - entrada[0]) + abs(p[1] - entrada[1]))
+  total = len(pontos)
+  niveis = {}
+  for indice, ponto in enumerate(pontos):
+    if indice < total / 3:
+      niveis[ponto] = NIVEL_PERIGO_VERDE
+    elif indice < total * 2 / 3:
+      niveis[ponto] = NIVEL_PERIGO_AMARELO
+    else:
+      niveis[ponto] = NIVEL_PERIGO_VERMELHO
+  return niveis
+
+
 def _desenhar_mapa(mapa, posicao, andar, personagem):
+  niveis_perigo = _calcular_niveis_perigo(mapa)
   linhas = [f'  {equipamento.resumo_status(personagem)}\n',
             f'  {Cor.BRANCO}{andar.nome}{Cor.RESET} — Andar {andar.numero} ({andar.faixa_nivel})\n']
   for y, linha in enumerate(mapa):
@@ -49,7 +78,8 @@ def _desenhar_mapa(mapa, posicao, andar, personagem):
       if [y, x] == posicao:
         celulas.append(f'{Cor.VERDE}@{Cor.RESET}')
       elif caractere == '?':
-        celulas.append(f'{Cor.AMARELO}?{Cor.RESET}')
+        cor = _COR_PERIGO.get(niveis_perigo.get((y, x)), Cor.AMARELO)
+        celulas.append(f'{cor}?{Cor.RESET}')
       elif caractere in ('.', 'E'):
         celulas.append('.')
       else:
@@ -100,16 +130,26 @@ def explorar(personagem, dungeon_id, *, escrever=None, leitor_tecla=None, limpar
 
   limpar()
   aplicar_desgaste_fome(personagem, escrever)
-  _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao, ler_acao_batalha, aguardar)
+  nivel_perigo = _calcular_niveis_perigo(mapa).get(tuple(posicao))
+  _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao, ler_acao_batalha, aguardar,
+                    nivel_perigo)
   aguardar()
 
 
 def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
-                      ler_acao_batalha, aguardar):
+                      ler_acao_batalha, aguardar, nivel_perigo=None):
+  """`nivel_perigo` (verde/amarelo/vermelho, ver config.py) só existe quando
+  chamado a partir de `explorar()`, que sabe em qual ponto do mapa o jogador
+  pisou — sem ele, o comportamento é o padrão de sempre (usado nos testes que
+  chamam essa função direto, sem simular um mapa)."""
   chance_boss = andar.chance_encontrar_chefe
+  if nivel_perigo == NIVEL_PERIGO_AMARELO:
+    chance_boss = max(1, chance_boss - 2)
+  elif nivel_perigo == NIVEL_PERIGO_VERMELHO:
+    chance_boss = max(1, chance_boss - 4)
   bonus_acessorio = chance_boss_extra_acessorio(personagem)
   if bonus_acessorio:
-    chance_boss = bonus_acessorio
+    chance_boss = min(chance_boss, bonus_acessorio)
     escrever(f'{Cor.CIANO}Seu acessório aumenta a chance de achar a sala do chefe!{Cor.RESET}')
 
   if random.randint(1, chance_boss) == 1:
@@ -131,13 +171,25 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
 
   if random.randint(1, peso_monstro + 2) <= peso_monstro:
     pool = list(andar.monstros_comuns)
+    # Área verde: puxa pros monstros mais simples do andar (primeira metade da
+    # lista); vermelha/amarela: puxa pros mais fortes (segunda metade).
+    metade = max(1, len(pool) // 2)
+    if nivel_perigo == NIVEL_PERIGO_VERDE:
+      pool = pool[:metade]
+    elif nivel_perigo in (NIVEL_PERIGO_AMARELO, NIVEL_PERIGO_VERMELHO):
+      pool = pool[-metade:]
     # Dobra a chance de cada monstro com missão ativa aparecer, senão eles só
     # apareciam na mesma proporção dos outros e a missão nunca avançava.
     monstros_com_missao = {m['monstro'] for m in personagem.missoes_ativas} & set(andar.monstros_comuns)
     for nome_monstro_missao in monstros_com_missao:
       pool += [nome_monstro_missao] * len(andar.monstros_comuns)
     nome_monstro = random.choice(pool)
-    elite = random.randint(1, CHANCE_MONSTRO_ELITE) == 1
+    chance_elite = CHANCE_MONSTRO_ELITE
+    if nivel_perigo == NIVEL_PERIGO_VERMELHO:
+      # área vermelha: monstros "buffados" — a mesma variante elite, só que
+      # bem mais frequente.
+      chance_elite = max(2, CHANCE_MONSTRO_ELITE // 5)
+    elite = random.randint(1, chance_elite) == 1
     prefixo_elite = f'{Cor.AMARELO}[ELITE] {Cor.RESET}' if elite else ''
     pergunta = (f'{Cor.AMARELO}Você encontrou um {prefixo_elite}{nome_monstro}!{Cor.RESET}\n'
                 f'Deseja lutar contra ele?')
@@ -145,7 +197,8 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
       _lutar(personagem, dungeon_id, nome_monstro, escrever, ler_acao_batalha, aguardar, elite=elite)
     return
 
-  if random.randint(1, 2) == 1:
+  limite_moeda = 3 if nivel_perigo == NIVEL_PERIGO_VERDE else 2
+  if random.randint(1, limite_moeda) <= limite_moeda - 1:
     moedas = random.randint(5, 15 + andar.numero * 5)
     personagem.moeda_cobre += moedas
     escrever(f'{Cor.VERDE}Você encontrou {moedas} cobres!{Cor.RESET}')

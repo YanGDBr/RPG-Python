@@ -92,7 +92,7 @@ def test_personagem_mostra_equipamento_atual_mesmo_sem_nada_pra_trocar():
   mostrava um erro genérico ('nada pra trocar') sem nunca confirmar que o
   acessório realmente ficou equipado — parecia que o equipar tinha falhado."""
   personagem = _personagem()
-  personagem.acessorio_equipado = 'Bracelete da Sorte'  # já equipado, nada guardado sobrando
+  personagem.acessorios_equipados = ['Bracelete da Sorte']  # já equipado, nada guardado sobrando
   telas_mostradas = []
 
   def _fake_menu(titulo, _opcoes, **_kw):
@@ -117,7 +117,7 @@ def test_personagem_equipa_o_unico_acessorio_guardado():
   cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
                           ler_acao=_fake_menu, aguardar=lambda: None)
 
-  assert personagem.acessorio_equipado == 'Bracelete da Sorte'
+  assert personagem.acessorios_equipados == ['Bracelete da Sorte']
   assert personagem.acessorios_guardados == []
 
 
@@ -290,3 +290,122 @@ def test_renovar_quadro_cobra_moedas():
                       ler_acao=ler_acao, aguardar=lambda: None, _quadros_cache={})
 
   assert personagem.moeda_cobre == saldo_antes - 100
+
+
+def test_status_mostra_chance_de_critico():
+  personagem = _personagem()
+  personagem.sorte = 20
+  telas = []
+
+  def _fake_menu(titulo, _opcoes, **_kw):
+    telas.append(titulo)
+    return None
+
+  cidade.tela_status(personagem, escrever=lambda *_a, **_k: None, ler_acao=_fake_menu,
+                      aguardar=lambda: None)
+
+  assert any('Crítico' in t for t in telas)
+
+
+def test_guia_elemental_mostra_a_roda_de_elementos():
+  telas = []
+
+  def _fake_menu(titulo, _opcoes, **_kw):
+    telas.append(titulo)
+    return None
+
+  cidade.tela_guia_elemental(_personagem(), ler_acao=_fake_menu)
+
+  assert any('Fisico' in t and 'Sombrio' in t for t in telas)
+
+
+def test_personagem_equipa_acessorio_direto_quando_tem_slot_livre():
+  personagem = _personagem()
+  personagem.acessorios_guardados = ['Bracelete da Sorte']
+  ler_acao = _fake_menu_sequencia([0, None])
+
+  cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=ler_acao, aguardar=lambda: None)
+
+  assert personagem.acessorios_equipados == ['Bracelete da Sorte']
+  assert personagem.acessorios_guardados == []
+
+
+def test_personagem_pede_escolha_de_slot_quando_todos_ocupados():
+  personagem = _personagem()
+  personagem.acessorios_equipados = ['Anel de Fogo']  # ocupa o único slot base
+  personagem.acessorios_guardados = ['Bracelete da Sorte']
+  # 1ª escolha: "Equipar acessório: Bracelete da Sorte" (índice 0)
+  # 2ª escolha (sub-menu de qual remover): "Anel de Fogo" (índice 0)
+  # depois sai
+  ler_acao = _fake_menu_sequencia([0, 0, None])
+
+  cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=ler_acao, aguardar=lambda: None)
+
+  assert personagem.acessorios_equipados == ['Bracelete da Sorte']
+  assert personagem.acessorios_guardados == ['Anel de Fogo']
+
+
+def test_personagem_desequipa_acessorio():
+  personagem = _personagem()
+  personagem.acessorios_equipados = ['Anel de Fogo']
+  # única opção disponível (nada guardado, 1 slot comprável) é:
+  # 0 = Desequipar acessório: Anel de Fogo, 1 = Comprar slot
+  ler_acao = _fake_menu_sequencia([0, None])
+
+  cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=ler_acao, aguardar=lambda: None)
+
+  assert personagem.acessorios_equipados == []
+  assert personagem.acessorios_guardados == ['Anel de Fogo']
+
+
+def test_comprar_slot_acessorio_com_moedas_suficientes():
+  personagem = _personagem()
+  personagem.moeda_cobre = 1000
+  ler_acao = _fake_menu_sequencia([0, None])  # única opção: comprar slot
+
+  cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=ler_acao, aguardar=lambda: None)
+
+  assert personagem.slots_acessorio_comprados == 1
+  assert personagem.moeda_cobre == 500
+
+
+def test_comprar_slot_acessorio_sem_moedas_suficientes():
+  personagem = _personagem()
+  personagem.moeda_cobre = 100
+  mensagens = []
+  ler_acao = _fake_menu_sequencia([0, None])
+
+  cidade.tela_personagem(personagem, escrever=mensagens.append,
+                          ler_acao=ler_acao, aguardar=lambda: None)
+
+  assert personagem.slots_acessorio_comprados == 0
+  assert personagem.moeda_cobre == 100
+  assert any('não tem' in m for m in mensagens)
+
+
+def test_slots_de_acessorio_ficam_cada_vez_mais_caros_em_moedas_diferentes():
+  personagem = _personagem()
+  personagem.moeda_cobre = 10_000
+  personagem.moeda_prata = 10_000
+  personagem.moeda_ouro = 10_000
+
+  cidade._comprar_slot_acessorio(personagem, lambda *_a, **_k: None, lambda: None)
+  assert personagem.slots_acessorio_comprados == 1
+  assert personagem.moeda_cobre == 10_000 - 500
+
+  cidade._comprar_slot_acessorio(personagem, lambda *_a, **_k: None, lambda: None)
+  assert personagem.slots_acessorio_comprados == 2
+  assert personagem.moeda_prata == 10_000 - 50
+
+  cidade._comprar_slot_acessorio(personagem, lambda *_a, **_k: None, lambda: None)
+  assert personagem.slots_acessorio_comprados == 3
+  assert personagem.moeda_ouro == 10_000 - 1
+
+  mensagens = []
+  cidade._comprar_slot_acessorio(personagem, mensagens.append, lambda: None)
+  assert personagem.slots_acessorio_comprados == 3  # já no máximo
+  assert any('máximo' in m for m in mensagens)

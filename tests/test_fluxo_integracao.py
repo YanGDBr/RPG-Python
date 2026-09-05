@@ -94,7 +94,7 @@ def test_explorar_um_andar_e_lutar_ate_vencer():
   # Não importa qual dos 3 eventos aconteceu (monstro, moedas ou nada) — o
   # personagem tem que continuar num estado consistente e sem exceções.
   assert personagem.vida >= 0
-  assert personagem.fome == 9  # aplicar_desgaste_fome rodou (começa em 10)
+  assert personagem.acoes_desde_desgaste_fome == 1  # aplicar_desgaste_fome rodou (só não desgasta ainda)
 
 
 def test_monstro_da_missao_tem_mais_chance_de_aparecer_na_exploracao(monkeypatch):

@@ -8,13 +8,13 @@ import random
 from ..config import (AUTOBATALHA_TURNOS, AUTOBATALHA_VIDA_MINIMA_PERCENTUAL,
                        BONUS_ETEN_PERCENTUAL, BONUS_POSTURA_DEFENSIVA_DANO,
                        BONUS_POSTURA_DEFENSIVA_REDUCAO, BONUS_POSTURA_OFENSIVA_DANO,
-                       BONUS_POSTURA_OFENSIVA_DANO_RECEBIDO, CHANCE_CRITICO_BASE,
-                       CHANCE_CRITICO_MAXIMA, CICLO_ELEMENTAL, FOME_CRITICA, Cor,
-                       FURIA_CAVALEIRO_MAXIMA, FURIA_GANHA_AO_ATACAR, FURIA_GANHA_AO_LEVAR_DANO,
-                       LIMITE_DEBUFF_PERCENTUAL, MULTIPLICADOR_CRITICO, MULTIPLICADOR_ELITE_ATAQUE,
-                       MULTIPLICADOR_FRAQUEZA_CICLO, MULTIPLICADOR_FRAQUEZA_ELEMENTAL,
-                       MULTIPLICADOR_RESISTENCIA_CICLO, MULTIPLICADOR_RESISTENCIA_ELEMENTAL,
-                       PODER_DANO_PERCENTUAL_POR_PONTO)
+                       BONUS_POSTURA_OFENSIVA_DANO_RECEBIDO, CHANCE_APLICAR_EFEITO_STATUS,
+                       CHANCE_CRITICO_BASE, CHANCE_CRITICO_MAXIMA, CICLO_ELEMENTAL, FOME_CRITICA,
+                       Cor, FURIA_CAVALEIRO_MAXIMA, FURIA_GANHA_AO_ATACAR,
+                       FURIA_GANHA_AO_LEVAR_DANO, LIMITE_DEBUFF_PERCENTUAL, MULTIPLICADOR_CRITICO,
+                       MULTIPLICADOR_ELITE_ATAQUE, MULTIPLICADOR_FRAQUEZA_CICLO,
+                       MULTIPLICADOR_FRAQUEZA_ELEMENTAL, MULTIPLICADOR_RESISTENCIA_CICLO,
+                       MULTIPLICADOR_RESISTENCIA_ELEMENTAL, PODER_DANO_PERCENTUAL_POR_PONTO)
 from ..dados.especializacoes import ESPECIALIZACOES
 from ..dados.habilidades import HABILIDADES
 from ..dados.racas import RACAS
@@ -49,14 +49,20 @@ def multiplicador_elemental(elemento_ataque, monstro):
   return 1.0
 
 
-def chance_de_critico(personagem, habilidade):
-  chance = (CHANCE_CRITICO_BASE + habilidade.bonus_critico + personagem.sorte
-            + personagem.bonus_critico_batalha
+def chance_de_critico_base(personagem):
+  """Chance de crítico sem o bônus específico de uma habilidade — usada na
+  tela de Status pra mostrar um número de "vitrine", já que fora de batalha
+  não existe uma habilidade selecionada."""
+  chance = (CHANCE_CRITICO_BASE + personagem.sorte + personagem.bonus_critico_batalha
             + equipamento.chance_critico_extra_acessorio(personagem))
   especializacao = ESPECIALIZACOES.get(personagem.especializacao)
   if especializacao and especializacao.bonus_tipo == 'critico':
     chance += especializacao.bonus_valor
-  return min(CHANCE_CRITICO_MAXIMA, chance)
+  return chance
+
+
+def chance_de_critico(personagem, habilidade):
+  return min(CHANCE_CRITICO_MAXIMA, chance_de_critico_base(personagem) + habilidade.bonus_critico)
 
 
 def _dano_sem_elemento(personagem, habilidade, monstro):
@@ -131,6 +137,13 @@ def prever_dano(personagem, habilidade, monstro):
   return max(1, round(dano))
 
 
+def _efeito_grudou():
+  """Chance compartilhada de um efeito de status (habilidade, ataque de
+  monstro, ou acessório) realmente aplicar — antes era garantido em quem
+  ataca e só o monstro tinha uma rolagem, o que era injusto pro jogador."""
+  return random.randint(1, 100) <= CHANCE_APLICAR_EFEITO_STATUS
+
+
 def _tentar_detonar_efeito(monstro, habilidade, escrever):
   """Combo: um ataque Físico detona qualquer dano-por-turno ativo no monstro
   (Queimadura/Sangramento/Veneno), causando de uma vez o dano que faltava."""
@@ -168,9 +181,12 @@ def personagem_ataca(personagem, habilidade, monstro, escrever):
     monstro.receber_dano(bonus_detonacao)
 
   if habilidade.efeito and monstro.vivo:
-    valor = 15 if habilidade.efeito == 'Fraqueza' else (20 if habilidade.efeito == 'Vulnerabilidade' else 0)
-    efeitos.aplicar_efeito(monstro.efeitos_ativos, habilidade.efeito, habilidade.turnos_efeito, valor)
-    escrever(f'{Cor.VERMELHO}O {monstro.nome} sofreu {habilidade.efeito}!{Cor.RESET}')
+    if _efeito_grudou():
+      valor = 15 if habilidade.efeito == 'Fraqueza' else (20 if habilidade.efeito == 'Vulnerabilidade' else 0)
+      efeitos.aplicar_efeito(monstro.efeitos_ativos, habilidade.efeito, habilidade.turnos_efeito, valor)
+      escrever(f'{Cor.VERMELHO}O {monstro.nome} sofreu {habilidade.efeito}!{Cor.RESET}')
+    else:
+      escrever(f'{Cor.CINZA}O {monstro.nome} resistiu ao {habilidade.efeito}.{Cor.RESET}')
 
   if habilidade.cura_percentual_usuario:
     vida_max = equipamento.vida_maxima_efetiva(personagem)
@@ -255,10 +271,13 @@ def monstro_ataca(personagem, monstro, escrever):
   descricao = random.choice(monstro.base.descricoes_ataque)
   _receber_ataque_do_monstro(personagem, dano, descricao, escrever)
 
-  if monstro.base.efeito_aplicado and random.randint(1, 2) == 1:
-    efeitos.aplicar_efeito(personagem.efeitos_ativos, monstro.base.efeito_aplicado,
-                            monstro.base.turnos_efeito_aplicado)
-    escrever(f'{Cor.VERMELHO}Você sofreu {monstro.base.efeito_aplicado}!{Cor.RESET}')
+  if monstro.base.efeito_aplicado:
+    if _efeito_grudou():
+      efeitos.aplicar_efeito(personagem.efeitos_ativos, monstro.base.efeito_aplicado,
+                              monstro.base.turnos_efeito_aplicado)
+      escrever(f'{Cor.VERMELHO}Você sofreu {monstro.base.efeito_aplicado}!{Cor.RESET}')
+    else:
+      escrever(f'{Cor.CINZA}Você resistiu ao {monstro.base.efeito_aplicado}.{Cor.RESET}')
 
   return False
 
@@ -334,12 +353,11 @@ def batalhar(personagem, monstro_base, escrever=None, ler_acao=None, aguardar=No
   for nome_habilidade in personagem.habilidades_equipadas:
     personagem.cooldowns[nome_habilidade] = 0
 
-  efeito_inicial = equipamento.efeito_inicial_de_batalha_acessorio(personagem)
-  if efeito_inicial:
-    nome_efeito, turnos = efeito_inicial
-    efeitos.aplicar_efeito(monstro.efeitos_ativos, nome_efeito, turnos)
-    escrever(f'{Cor.VERMELHO}Seu acessório inflige {nome_efeito} no {monstro.nome} '
-             f'assim que a batalha começa!{Cor.RESET}')
+  for nome_efeito, turnos in equipamento.efeitos_iniciais_de_batalha_acessorios(personagem):
+    if _efeito_grudou():
+      efeitos.aplicar_efeito(monstro.efeitos_ativos, nome_efeito, turnos)
+      escrever(f'{Cor.VERMELHO}Seu acessório inflige {nome_efeito} no {monstro.nome} '
+               f'assim que a batalha começa!{Cor.RESET}')
 
   sufixo_elite = f' {Cor.AMARELO}(ELITE){Cor.RESET}' if elite else ''
   escrever(f'{Cor.BRANCO}Você entrou em batalha contra {monstro.nome}!{Cor.RESET}{sufixo_elite}')
@@ -432,7 +450,8 @@ def batalhar(personagem, monstro_base, escrever=None, ler_acao=None, aguardar=No
       if tipo_acao == 'postura':
         personagem.postura = proxima_postura
         escrever(f'Você muda para postura {Cor.BRANCO}{proxima_postura}{Cor.RESET}.')
-        break
+        aguardar()
+        continue  # trocar de postura é de graça — não passa a vez pro monstro
 
       if tipo_acao == 'itens':
         _abrir_itens_de_batalha(personagem, escrever, ler_acao)

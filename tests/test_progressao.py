@@ -3,7 +3,7 @@ instantânea) e para o multiplicador global de experiência."""
 
 from math import trunc
 
-from rpg.config import MULTIPLICADOR_EXP_GLOBAL
+from rpg.config import ACOES_POR_DESGASTE_FOME, MULTIPLICADOR_EXP_GLOBAL
 from rpg.dados.monstros import MONSTROS
 from rpg.modelos.personagem import Personagem
 from rpg.sistemas import progressao
@@ -79,3 +79,17 @@ def test_exp_de_monstro_e_multiplicada_pelo_multiplicador_global(monkeypatch):
   progressao.conceder_recompensas(personagem, monstro, lambda *_a, **_k: None)
 
   assert personagem.exp == trunc(monstro.exp_min * MULTIPLICADOR_EXP_GLOBAL)
+
+
+def test_fome_so_desgasta_a_cada_n_acoes():
+  personagem = _personagem()
+  personagem.vida = personagem.vida_maxima
+  personagem.fome = 10
+
+  for _ in range(ACOES_POR_DESGASTE_FOME - 1):
+    progressao.aplicar_desgaste_fome(personagem, lambda *_a, **_k: None)
+  assert personagem.fome == 10  # ainda não completou o ciclo
+
+  progressao.aplicar_desgaste_fome(personagem, lambda *_a, **_k: None)
+  assert personagem.fome == 9  # completou o ciclo, desgasta 1
+  assert personagem.acoes_desde_desgaste_fome == 0

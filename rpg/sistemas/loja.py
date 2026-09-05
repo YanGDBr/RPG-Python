@@ -81,7 +81,8 @@ def loja_itens(personagem, escrever=print, ler_acao=None, aguardar=None):
 
     if escolha < total_acessorios:
       acessorio = CATALOGO_ACESSORIOS[escolha]
-      if acessorio.nome in personagem.acessorios_guardados or personagem.acessorio_equipado == acessorio.nome:
+      if (acessorio.nome in personagem.acessorios_guardados
+          or acessorio.nome in personagem.acessorios_equipados):
         escrever(f'{Cor.AMARELO}Você já tem esse acessório.{Cor.RESET}')
         aguardar()
         continue
@@ -126,7 +127,7 @@ def loja_ofertas_do_dia(personagem, escrever=print, ler_acao=None, aguardar=None
     item = ofertas[escolha]
     preco_final = _preco_com_desconto(item.preco)
     if isinstance(item, Acessorio):
-      if item.nome in personagem.acessorios_guardados or personagem.acessorio_equipado == item.nome:
+      if item.nome in personagem.acessorios_guardados or item.nome in personagem.acessorios_equipados:
         escrever(f'{Cor.AMARELO}Você já tem esse acessório.{Cor.RESET}')
         aguardar()
         continue

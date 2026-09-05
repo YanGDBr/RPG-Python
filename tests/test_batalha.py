@@ -313,3 +313,67 @@ def test_especializacao_atirador_de_elite_aumenta_chance_de_critico():
   personagem.especializacao = 'Atirador de Elite'
   chance_com = batalha.chance_de_critico(personagem, HABILIDADES['Investida'])
   assert chance_com > chance_sem
+
+
+def test_trocar_postura_nao_gasta_turno():
+  """Regressão: trocar de postura era uma ação como qualquer outra e dava a
+  vez pro monstro atacar — agora é de graça."""
+  personagem = _personagem_cavaleiro()
+  personagem.poder = 500  # 1 golpe mata o Kobold
+  respostas = iter([3, 0])  # 3 = troca postura (não devia gastar turno), 0 = ataca e vence
+
+  resultado, _monstro = batalha.batalhar(
+      personagem, MONSTROS['Kobold'], escrever=lambda *_a, **_k: None,
+      ler_acao=lambda *_a, **_k: next(respostas), aguardar=lambda: None)
+
+  assert resultado == batalha.ResultadoBatalha.VITORIA
+  assert personagem.vida == personagem.vida_maxima  # nunca levou dano nenhum
+
+
+def test_chance_de_critico_base_nao_inclui_bonus_de_habilidade():
+  personagem = _personagem_cavaleiro()
+  personagem.sorte = 5
+  from rpg.dados.habilidades import HABILIDADES
+  habilidade = HABILIDADES['Meteoro Arcano']  # bonus_critico=15, só pra ter algo != 0
+  base = batalha.chance_de_critico_base(personagem)
+  com_habilidade = batalha.chance_de_critico(personagem, habilidade)
+  assert com_habilidade == base + habilidade.bonus_critico
+
+
+def test_efeito_de_habilidade_nao_aplica_quando_a_rolagem_falha(monkeypatch):
+  from rpg.dados.habilidades import HABILIDADES
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  habilidade = HABILIDADES['Corte Fatal']  # efeito Sangramento
+
+  monkeypatch.setattr(batalha.random, 'randint', lambda a, b: 100)  # sempre falha a rolagem de efeito
+  mensagens = []
+  batalha.personagem_ataca(personagem, habilidade, monstro, mensagens.append)
+
+  assert not any(e['nome'] == 'Sangramento' for e in monstro.efeitos_ativos)
+  assert any('resistiu' in m for m in mensagens)
+
+
+def test_efeito_de_habilidade_aplica_quando_a_rolagem_acerta(monkeypatch):
+  from rpg.dados.habilidades import HABILIDADES
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  habilidade = HABILIDADES['Corte Fatal']
+
+  monkeypatch.setattr(batalha.random, 'randint', lambda a, b: 1)  # sempre acerta a rolagem de efeito
+  mensagens = []
+  batalha.personagem_ataca(personagem, habilidade, monstro, mensagens.append)
+
+  assert any(e['nome'] == 'Sangramento' for e in monstro.efeitos_ativos)
+
+
+def test_efeito_de_monstro_e_probabilistico_e_avisa_quando_resiste(monkeypatch):
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold Mago'])  # efeito_aplicado='Queimadura'
+
+  monkeypatch.setattr(batalha.random, 'randint', lambda a, b: 100)  # falha esquiva e falha efeito
+  mensagens = []
+  batalha.monstro_ataca(personagem, monstro, mensagens.append)
+
+  assert personagem.efeitos_ativos == []
+  assert any('resistiu' in m for m in mensagens)

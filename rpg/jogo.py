@@ -11,6 +11,7 @@ from .config import DIRETORIO_BACKUPS, INTERVALO_AUTOSAVE_SEGUNDOS, Cor
 from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
 from .dados.especializacoes import NIVEL_MINIMO_ESPECIALIZACAO
+from .dados.itens import ITENS_CONSUMIVEIS, POCOES, POCOES_CRAFTADAS
 from .dados.mapas_mundo import MAPA_ILYRATH, MAPA_VETHGARD
 from .dados.npcs import NPCS
 from .dados.racas import RACAS
@@ -234,12 +235,20 @@ def _talvez_autosalvar(personagem, slots):
     _estado_autosave['ultimo'] = agora
 
 
+def _descricao_pocao(nome):
+  pocao = POCOES.get(nome) or POCOES_CRAFTADAS.get(nome)
+  return f'+{pocao.valor} {pocao.efeito}' if pocao else ''
+
+
 def _tela_inventario(personagem):
   while True:
     nomes_pocoes = [nome for nome, qtd in personagem.pocoes.items() if qtd > 0]
     nomes_itens = [nome for nome, qtd in personagem.inventario.items() if qtd > 0]
-    opcoes = [f'Poção de {nome} x{personagem.pocoes[nome]}' for nome in nomes_pocoes]
-    opcoes += [f'{nome} x{personagem.inventario[nome]}' for nome in nomes_itens]
+    opcoes = [f'Poção de {nome} x{personagem.pocoes[nome]} ({_descricao_pocao(nome)})'
+              for nome in nomes_pocoes]
+    opcoes += [f'{nome} x{personagem.inventario[nome]}'
+               + (f' ({ITENS_CONSUMIVEIS[nome].descricao})' if nome in ITENS_CONSUMIVEIS else '')
+               for nome in nomes_itens]
     if not opcoes:
       limpar_tela()
       print(f'{Cor.CIANO}Seu inventário de itens está vazio.{Cor.RESET}')
@@ -358,7 +367,7 @@ def _tela_vila(personagem, slots):
     if personagem.abismo_submerso_liberado:
       opcoes.append('Abismo Submerso')
     opcoes.append('Mapa do Mundo')
-    opcoes += ['Personagem', 'Casa', 'Desbloquear Habilidades', 'Status',
+    opcoes += ['Personagem', 'Casa', 'Desbloquear Habilidades', 'Status', 'Guia Elemental',
                'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho', 'Ferreiro']
     if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
       opcoes.append('Especialização')
@@ -406,6 +415,8 @@ def _tela_vila(personagem, slots):
       cidade.tela_desbloquear_habilidades(personagem)
     elif acao == 'Status':
       cidade.tela_status(personagem)
+    elif acao == 'Guia Elemental':
+      cidade.tela_guia_elemental(personagem)
     elif acao == 'Guilda':
       cidade.tela_guilda(personagem)
     elif acao == 'Curandeira':

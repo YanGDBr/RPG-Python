@@ -150,6 +150,23 @@ def test_importar_backup_ui_confirma_e_recarrega_slots(monkeypatch, tmp_path):
   assert resultado is slots_novos
 
 
+def test_inventario_mostra_descricao_de_pocoes_e_itens(monkeypatch):
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.pocoes['Vida'] = 1
+  personagem.adicionar_item('Perfume Anti-Monstro')
+  opcoes_vistas = []
+
+  def _fake_menu(_titulo, opcoes, **_kw):
+    opcoes_vistas.append(opcoes)
+    return None
+
+  monkeypatch.setattr(jogo, 'menu_padrao', _fake_menu)
+  jogo._tela_inventario(personagem)
+
+  assert any('vida' in o.lower() for o in opcoes_vistas[0])
+  assert any('monstro' in o.lower() for o in opcoes_vistas[0])
+
+
 def test_entrar_cratera_bloqueado_antes_de_liberar():
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   mensagens = []

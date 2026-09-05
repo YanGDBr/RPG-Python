@@ -3,8 +3,8 @@
 import random
 from math import trunc
 
-from ..config import (BONUS_ELITE_RECOMPENSA_PERCENTUAL, FOME_CRITICA, FOME_MAXIMA,
-                       MULTIPLICADOR_EXP_GLOBAL, REPUTACAO_GANHA_POR_MISSAO, Cor)
+from ..config import (ACOES_POR_DESGASTE_FOME, BONUS_ELITE_RECOMPENSA_PERCENTUAL, FOME_CRITICA,
+                       FOME_MAXIMA, MULTIPLICADOR_EXP_GLOBAL, REPUTACAO_GANHA_POR_MISSAO, Cor)
 from ..dados.itens import ACESSORIOS_UNICOS, MATERIAIS
 from ..dados.racas import RACAS
 from . import equipamento
@@ -36,7 +36,12 @@ def verificar_morte(personagem, escrever):
 
 def aplicar_desgaste_fome(personagem, escrever):
   """Chamado a cada ação real (batalha/exploração) — a fome de 5 anos atrás só
-  descia uma vez no login e nunca mais fazia diferença nenhuma."""
+  descia uma vez no login e nunca mais fazia diferença nenhuma. Só desgasta de
+  fato 1 a cada ACOES_POR_DESGASTE_FOME ações, senão cai rápido demais."""
+  personagem.acoes_desde_desgaste_fome += 1
+  if personagem.acoes_desde_desgaste_fome < ACOES_POR_DESGASTE_FOME:
+    return
+  personagem.acoes_desde_desgaste_fome = 0
   personagem.fome = max(0, personagem.fome - 1)
   if personagem.fome <= 0:
     escrever(f'{Cor.VERMELHO}Você está faminto! Isso está drenando sua vida.{Cor.RESET}')

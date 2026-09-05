@@ -36,6 +36,7 @@ class Personagem:
 
   fome: int = 10
   descansos_usados: int = 0
+  acoes_desde_desgaste_fome: int = 0
 
   inventario: Dict[str, int] = field(default_factory=dict)
   materiais: Dict[str, int] = field(default_factory=dict)
@@ -49,7 +50,10 @@ class Personagem:
 
   arma_equipada: str = ''
   armadura_equipada: str = ''
-  acessorio_equipado: str = ''
+  # Começa com 1 slot; cada compra em `slots_acessorio_comprados` libera mais um
+  # (até 3 comprados = 4 no total — ver CUSTOS_SLOT_ACESSORIO em config.py).
+  acessorios_equipados: List[str] = field(default_factory=list)
+  slots_acessorio_comprados: int = 0
 
   habilidades_aprendidas: List[str] = field(default_factory=list)
   habilidades_equipadas: List[str] = field(default_factory=list)
