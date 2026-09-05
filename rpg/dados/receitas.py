@@ -25,4 +25,8 @@ RECEITAS = {
       nome='Armadura Abissal',
       materiais_necessarios={'Escama Abissal': 3, 'Pérola Negra': 2, 'Tinta de Kraken': 1},
       resultado_tipo='armadura_unica', resultado_nome='Armadura Abissal'),
+  'Manto do Rei Cinza': Receita(
+      nome='Manto do Rei Cinza',
+      materiais_necessarios={'Cinza do Rei Corrompido': 3},
+      resultado_tipo='armadura_unica', resultado_nome='Manto do Rei Cinza'),
 }

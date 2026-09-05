@@ -118,4 +118,11 @@ MAPAS = {
                                pontos_relativos=[(-9, 0), (9, 0), (0, -17), (0, 17),
                                                   (-7, -12), (7, 12), (-7, 12), (7, -12)]),
   },
+  'cratera_vhalos': {
+    1: _construir_mapa_pente(31, 13, ramos=[4, 9, 14, 19, 24],
+                              parede='%', entrada_coluna=1),
+    2: _construir_mapa_salao(35, 17, raio_sala=6, parede='&',
+                               pontos_relativos=[(-7, 0), (7, 0), (0, -13), (0, 13),
+                                                  (-5, -9), (5, 9)]),
+  },
 }

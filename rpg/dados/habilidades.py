@@ -105,6 +105,20 @@ HABILIDADES = {
       nome='Tiro Perfurante', mana=90, dano_base=160, tipo='ataque', elemento='Fisico',
       ignora_resistencia=True, cooldown_max=3,
       descricao='Uma flecha que ignora qualquer resistência do inimigo.'),
+
+  # ------------------------------------------- Pós-Cratera de Vhalos (nível 50+)
+  'Fogo Cinzento': Habilidade(
+      nome='Fogo Cinzento', mana=170, dano_base=280, tipo='ataque', elemento='Fogo',
+      efeito='Queimadura', turnos_efeito=3, cooldown_max=4, nivel_minimo=50, preco=2500,
+      descricao='As chamas que consumiram o Rei Cinza, agora nas suas mãos.'),
+  'Lâmina do Rei Caído': Habilidade(
+      nome='Lâmina do Rei Caído', mana=140, dano_base=300, tipo='ataque', elemento='Fisico',
+      bonus_critico=20, cooldown_max=4, nivel_minimo=50, preco=2500,
+      descricao='Um golpe forjado no mesmo desespero que corrompeu um rei inteiro.'),
+  'Flecha do Juízo': Habilidade(
+      nome='Flecha do Juízo', mana=150, dano_base=260, tipo='ataque', elemento='Fisico',
+      ignora_resistencia=True, cooldown_max=4, nivel_minimo=50, preco=2500,
+      descricao='Perfura qualquer resistência — nem coroas cinzentas a detêm.'),
 }
 
 
@@ -115,7 +129,8 @@ HABILIDADES_INICIAIS = {
 }
 
 HABILIDADES_DESBLOQUEAVEIS = {
-  'Mago': ['Bola de Gelo', 'Fogo do Dragão Elemental', 'Meteoro Arcano'],
-  'Cavaleiro': ['Golpe Atordoante', 'Espada de Aura', 'Fúria do Guerreiro'],
-  'Arqueiro': ['Flecha Perfurante', 'Flecha de Ponta Cristalizada Venenosa', 'Chuva Mortal'],
+  'Mago': ['Bola de Gelo', 'Fogo do Dragão Elemental', 'Meteoro Arcano', 'Fogo Cinzento'],
+  'Cavaleiro': ['Golpe Atordoante', 'Espada de Aura', 'Fúria do Guerreiro', 'Lâmina do Rei Caído'],
+  'Arqueiro': ['Flecha Perfurante', 'Flecha de Ponta Cristalizada Venenosa', 'Chuva Mortal',
+               'Flecha do Juízo'],
 }

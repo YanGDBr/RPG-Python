@@ -35,10 +35,12 @@ ARMADURAS = {
                                    bonus_vida_percentual=40, bonus_mana_percentual=20, preco=800),
 }
 
-# Só obtida via crafting, com material do Abismo Submerso — ver receitas.py.
+# Só obtidas via crafting, com material de chefe final — ver receitas.py.
 ARMADURAS_UNICAS = {
   'Armadura Abissal': Armadura('Armadura Abissal', '50% a mais de vida e 30% a mais de mana',
                                  bonus_vida_percentual=50, bonus_mana_percentual=30),
+  'Manto do Rei Cinza': Armadura('Manto do Rei Cinza', '60% a mais de vida e 35% a mais de mana',
+                                   bonus_vida_percentual=60, bonus_mana_percentual=35),
 }
 
 # ---------------------------------------------------------------- Acessórios
@@ -79,6 +81,10 @@ ACESSORIOS_UNICOS = {
       'Tridente da Rainha', 'Aumenta a chance de crítico em 12%', 'critico', 12),
   'Kraken Ancestral': Acessorio(
       'Coração do Kraken', 'Aumenta as moedas ganhas em 25%', 'ouro_extra', 25),
+  'O Consumido': Acessorio(
+      'Elmo do Consumido', 'Aumenta a esquiva em 10 pontos', 'esquiva_flat', 10),
+  'Vashtar, o Rei Cinza': Acessorio(
+      'Coroa do Rei Cinza', 'Reduz o dano recebido em 20%', 'reducao_dano', 20),
 }
 
 # -------------------------------------------------------------------- Poções
@@ -119,4 +125,6 @@ MATERIAIS = {
   'Escama Abissal': Material('Escama Abissal', 'Escama de uma criatura das profundezas.'),
   'Pérola Negra': Material('Pérola Negra', 'Pérola rara encontrada no Abismo Submerso.'),
   'Tinta de Kraken': Material('Tinta de Kraken', 'Tinta escura e viscosa do Kraken Ancestral.'),
+  'Cinza do Rei Corrompido': Material(
+      'Cinza do Rei Corrompido', 'Tudo que restou da coroa de Vashtar depois da batalha.'),
 }

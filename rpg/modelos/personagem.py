@@ -60,9 +60,12 @@ class Personagem:
 
   chefes_derrotados: List[str] = field(default_factory=list)
   andar_atual: Dict[str, int] = field(
-      default_factory=lambda: {'habusken': 1, 'torre_arcana': 1, 'abismo_submerso': 1})
+      default_factory=lambda: {'habusken': 1, 'torre_arcana': 1, 'abismo_submerso': 1,
+                                 'cratera_vhalos': 1})
   torre_arcana_liberada: bool = False
   abismo_submerso_liberado: bool = False
+  cratera_vhalos_liberado: bool = False
+  abismo_epilogo_mostrado: bool = False
 
   missao_monstro: str = ''
   missao_quantidade_alvo: int = 0

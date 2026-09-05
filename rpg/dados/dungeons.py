@@ -67,4 +67,15 @@ DUNGEONS = {
         Andar(3, 'Trono do Kraken', 'Recomendado para níveis 65+',
               ['Tentáculo Errante', 'Espectro Afogado', 'Golem de Coral Negro'], 'Kraken Ancestral'),
       ]),
+  'cratera_vhalos': Dungeon(
+      id='cratera_vhalos',
+      nome='Cratera de Vhalos',
+      requer_chefe_derrotado='Kraken Ancestral',
+      andares=[
+        Andar(1, 'A Descida na Cratera', 'Recomendado para níveis 45+',
+              ['Corrompido Errante', 'Sombra Cinzenta', 'Golem de Cinzas'], 'O Consumido',
+              chance_encontrar_chefe=6),
+        Andar(2, 'O Trono do Rei Cinza', 'Recomendado para níveis 48+',
+              ['Guarda Cinza'], 'Vashtar, o Rei Cinza', chance_encontrar_chefe=5),
+      ]),
 }

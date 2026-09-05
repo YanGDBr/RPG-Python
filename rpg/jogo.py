@@ -9,34 +9,65 @@ from .config import Cor
 from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
 from .dados.especializacoes import NIVEL_MINIMO_ESPECIALIZACAO
+from .dados.mapas_mundo import MAPA_ILYRATH, MAPA_VETHGARD
+from .dados.npcs import NPCS
 from .dados.racas import RACAS
 from .entrada import menu as menu_padrao
 from .entrada import pedir_texto, perguntar_sim_nao
 from .interface import barra, cabecalho, limpar_tela, ljust_visivel
 from .modelos.personagem import Personagem
 from .persistencia import carregar_slots, salvar_slots
-from .sistemas import cidade, equipamento, exploracao, inventario, loja
+from .sistemas import cidade, equipamento, exploracao, inventario, loja, mundo
 from .sistemas.progressao import tentar_reviver
 
-HISTORIA_INICIAL = """Você era um cidadão de uma cidade no interior do Brasil, um policial respeitado. Sua
-última investigação era de uma criança desaparecida — você a encontrou, mas o sequestrador ameaçava jogá-la
-de um prédio. Para impedir isso, você se sacrificou junto com o sequestrador, caindo de um prédio de 10
-andares. Vendo que você foi um bom policial, Deus o reencarnou em um mundo de fantasia, com magia, monstros
-e habilidades, para que aproveitasse a vida do jeito que quisesse. Nesse mundo existem dungeons cuja origem
-é misteriosa — surgiram há 1800 anos, num mundo que vive por volta do período medieval.
+HISTORIA_QUEDA = """Você era policial civil numa cidade pequena do interior, Santa Rosa do Almeida — do tipo
+onde todo mundo conhece todo mundo. Seu último caso foi o sequestro de Bianca, uma menina de oito anos,
+levada por um homem que a cidade toda conhecia como "estranho, mas inofensivo" — até não ser mais. Você a
+encontrou no telhado do prédio mais alto da cidade, minutos depois dele ameaçar, por telefone, jogá-la lá de
+cima.
 
-Você acorda em um corpo adulto, numa casa simples, com uma mochila contendo 100 cobres, um pouco
-de comida e documentos de identidade. Decide se tornar um aventureiro e desvendar o mistério das dungeons.
-"""
+Não teve negociação. Você teve menos de dois segundos entre ver o movimento do braço dele e agir — só se
+jogou pra puxar os dois de volta da mureta. Conseguiu empurrar Bianca de volta pro telhado. Vocês dois
+caíram, dez andares.
 
-EPILOGO = """Com o Kraken Ancestral derrotado, as águas do Abismo Submerso finalmente se aquietam. Entre os
-destroços flutuantes, você entende: O Arquiteto não criou as dungeons por acaso — elas eram um teste, uma
-peneira para separar quem seria digno de herdar o que restou de um mundo antigo. Você não sabe se essa
-resposta é um fim ou um começo, mas sabe que sobreviveu a tudo que esse mundo pôde jogar contra você.
+Bianca sobreviveu. Você morreu antes de chegar ao chão — ou melhor: algo decidiu que você não precisava
+chegar ao chão."""
 
-A história que te trouxe até aqui, de um policial que caiu de um prédio, termina como uma lenda entre os
-aventureiros de Habusken. A sua jornada, porém, continua — sempre há mais uma dungeon, mais um mistério,
-mais um andar abaixo do último."""
+ORDINAEL_PARTE_1 = """Você não precisa ter medo. A dor já ficou pra trás — junto com o corpo, junto com o
+prédio, junto com o nome que os outros gritavam enquanto você caía.
+
+Eu vi o que você fez. Vi você escolher, num espaço de tempo pequeno demais pra chamar de escolha, salvar uma
+vida que não era a sua. Isso é raro. Mais raro do que você imagina. A maioria hesita — só um instante, só o
+suficiente. Você não hesitou.
+
+Por isso estou aqui. Chame-me do que quiser — Deus serve, se te dá conforto. Existem nomes mais antigos, mas
+nenhum vai significar nada pra você ainda.
+
+Eu não posso devolver o que você perdeu. Mas posso te dar algo novo: um corpo, um mundo, uma chance de viver
+sem o peso de tudo que veio antes. Existem formas diferentes de se começar de novo — cada uma com seus
+próprios dons, e seus próprios preços. Escolha o molde que mais soar como você."""
+
+ORDINAEL_PARTE_2 = """E dentro desse molde, existem caminhos — de força, de intelecto, de pontaria. Nenhum é
+superior. Todos serão testados."""
+
+ORDINAEL_PARTE_3 = """Uma última coisa, antes de te soltar nesse mundo: eu vou estar observando. Não por
+desconfiança — por cuidado. Quero ver o que você faz com essa segunda vida. Quero ver até onde ela te leva."""
+
+EPILOGO_ABISMO = """Com o Kraken Ancestral derrotado, as águas do Abismo Submerso finalmente se aquietam. Você
+não sabe dizer por quê, mas sente que Ilyrath ainda guarda um último problema — maior que qualquer coisa que
+você já enfrentou. Os mapas mais antigos de Habusken marcam um lugar ao norte, a Cratera de Vhalos, só com
+um aviso: "não ir". Ninguém explica o porquê. Talvez seja hora de descobrir."""
+
+EPILOGO_VASHTAR = """O cristal negro no peito de Vashtar se estilhaça com um som que não devia existir — não
+um estrondo, um silêncio que dói. Por uma fração de segundo, você sente algo se soltar: um sinal, uma
+assinatura, um grito atravessando a realidade inteira num piscar de olhos.
+
+Vashtar cai. Sob a coroa cinzenta e mil e duzentos anos de poder que nunca foram dele, resta só um homem —
+o primeiro campeão de Ilyrath, o primeiro a vencer tudo, o primeiro a pagar por isso.
+
+Ilyrath está livre. Você derrotou o Rei Cinza. Por um segundo, e só um segundo, você sentiu como se alguém —
+ou algo — enorme tivesse aberto os olhos em algum lugar muito, muito longe. E então, tão rápido quanto veio,
+a sensação passa — e tudo que resta é o silêncio de uma cratera finalmente vazia."""
 
 _ICONE_CLASSE = {'Mago': '(*)', 'Cavaleiro': '[X]', 'Arqueiro': '}=>'}
 _LARGURA_CAIXA = 50
@@ -76,16 +107,21 @@ def _tela_selecionar_slot(slots):
 
 
 def _criar_personagem():
-  nome = pedir_texto('Nome do personagem: -->')
-  personagem = Personagem(nome=nome)
+  limpar_tela()
+  print(HISTORIA_QUEDA)
+  input('\nAperte Enter para continuar...')
 
   limpar_tela()
-  print(HISTORIA_INICIAL)
+  print(ORDINAEL_PARTE_1)
   input('\nAperte Enter para continuar...')
+
+  nome = pedir_texto('\nEscolha o nome do seu novo corpo: -->')
+  personagem = Personagem(nome=nome)
 
   nomes_racas = list(RACAS.keys())
   while True:
-    escolha = menu_padrao('Escolha sua raça', nomes_racas + ['Ver informações'], com_voltar=False)
+    escolha = menu_padrao('Escolha o molde que mais soa como você',
+                           nomes_racas + ['Ver informações'], com_voltar=False)
     if escolha == len(nomes_racas):
       limpar_tela()
       print('\n'.join(f'{r.nome}: {r.descricao}' for r in RACAS.values()))
@@ -103,9 +139,13 @@ def _criar_personagem():
       personagem.mana = personagem.mana_maxima
     break
 
+  limpar_tela()
+  print(ORDINAEL_PARTE_2)
+  input('\nAperte Enter para continuar...')
+
   nomes_classes = list(CLASSES.keys())
   while True:
-    escolha = menu_padrao('Escolha sua classe', nomes_classes + ['Ver informações'], com_voltar=False)
+    escolha = menu_padrao('Escolha seu caminho', nomes_classes + ['Ver informações'], com_voltar=False)
     if escolha == len(nomes_classes):
       limpar_tela()
       print('\n'.join(f'{c.nome}: {c.descricao}' for c in CLASSES.values()))
@@ -113,6 +153,10 @@ def _criar_personagem():
       continue
     personagem.classe = nomes_classes[escolha]
     break
+
+  limpar_tela()
+  print(ORDINAEL_PARTE_3)
+  input('\nAperte Enter para continuar...')
 
   classe = CLASSES[personagem.classe]
   personagem.habilidades_aprendidas = list(classe.habilidades_iniciais)
@@ -204,16 +248,57 @@ def _tela_dungeon(personagem, dungeon_id, slots):
       return
 
 
+def _entrar_cratera_callback(personagem, escrever, aguardar, limpar):
+  if not personagem.cratera_vhalos_liberado:
+    limpar()
+    escrever(f'{Cor.CINZA}Os mapas antigos marcam esse caminho só como "não ir". '
+             f'Talvez ainda não seja hora.{Cor.RESET}')
+    aguardar()
+    return None
+  return 'cratera'
+
+
+def _tela_vethgard(personagem):
+  eventos = {
+    'S': mundo.falar_com_npc('arquivista_sorel'),
+    'M': mundo.falar_com_npc('orfao_mikel'),
+    'G': mundo.falar_com_npc('guarda_vethgard'),
+  }
+  mundo.explorar_mapa(personagem, MAPA_VETHGARD, eventos, 'Vethgard')
+
+
+def _tela_mapa_mundo(personagem, slots):
+  eventos = {
+    'T': mundo.falar_com_npc('velho_caminhante'),
+    'V': lambda p, e, a, l: 'vethgard',
+    'C': _entrar_cratera_callback,
+  }
+  while True:
+    resultado = mundo.explorar_mapa(personagem, MAPA_ILYRATH, eventos, 'Mapa de Ilyrath')
+    if resultado is None:
+      return
+    if resultado == 'vethgard':
+      _tela_vethgard(personagem)
+    elif resultado == 'cratera':
+      _tela_dungeon(personagem, 'cratera_vhalos', slots)
+      if 'Vashtar, o Rei Cinza' in personagem.chefes_derrotados and not personagem.historia_concluida:
+        personagem.historia_concluida = True
+        limpar_tela()
+        print(EPILOGO_VASHTAR)
+        input('\nAperte Enter para continuar...')
+
+
 def _tela_vila(personagem, slots):
   while True:
     if personagem.morto:
       _aguardar_revive_se_necessario(personagem, slots)
 
-    opcoes = ['Loja', 'Mestre de Habusken', 'Dungeon de Habusken']
+    opcoes = ['Loja', 'Mestre de Habusken', 'Conversar com o Ancião', 'Dungeon de Habusken']
     if personagem.torre_arcana_liberada:
       opcoes.append('Torre Arcana')
     if personagem.abismo_submerso_liberado:
       opcoes.append('Abismo Submerso')
+    opcoes.append('Mapa do Mundo')
     opcoes += ['Personagem', 'Casa', 'Desbloquear Habilidades', 'Status',
                'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho', 'Ferreiro']
     if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
@@ -231,6 +316,10 @@ def _tela_vila(personagem, slots):
       _tela_loja(personagem)
     elif acao == 'Mestre de Habusken':
       cidade.tela_mestre_habusken(personagem)
+    elif acao == 'Conversar com o Ancião':
+      npc = NPCS['anciao_habusken']
+      mundo.mostrar_falas(npc.nome, npc.falas(personagem), print, lambda: input('Enter para continuar...'),
+                          limpar_tela)
     elif acao == 'Dungeon de Habusken':
       _tela_dungeon(personagem, 'habusken', slots)
       if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
@@ -241,11 +330,15 @@ def _tela_vila(personagem, slots):
         personagem.abismo_submerso_liberado = True
     elif acao == 'Abismo Submerso':
       _tela_dungeon(personagem, 'abismo_submerso', slots)
-      if 'Kraken Ancestral' in personagem.chefes_derrotados and not personagem.historia_concluida:
-        personagem.historia_concluida = True
-        limpar_tela()
-        print(EPILOGO)
-        input('\nAperte Enter para continuar...')
+      if 'Kraken Ancestral' in personagem.chefes_derrotados:
+        personagem.cratera_vhalos_liberado = True
+        if not personagem.abismo_epilogo_mostrado:
+          personagem.abismo_epilogo_mostrado = True
+          limpar_tela()
+          print(EPILOGO_ABISMO)
+          input('\nAperte Enter para continuar...')
+    elif acao == 'Mapa do Mundo':
+      _tela_mapa_mundo(personagem, slots)
     elif acao == 'Personagem':
       cidade.tela_personagem(personagem)
     elif acao == 'Casa':
