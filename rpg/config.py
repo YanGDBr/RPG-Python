@@ -103,3 +103,7 @@ REPUTACAO_TIERS = [(0, 'Novato'), (100, 'Experiente'), (300, 'Veterano'), (600, 
 QUANTIDADE_MISSOES_POR_QUADRO = 3
 MAX_MISSOES_ATIVAS = 2
 CUSTO_RENOVAR_QUADRO = 100
+
+# Auto-salvamento: silencioso, verificado nos loops principais (vila, dungeon,
+# mundo aberto) — não interrompe o jogador, só evita perder progresso.
+INTERVALO_AUTOSAVE_SEGUNDOS = 120

@@ -4,8 +4,9 @@ nada de função chamando a si mesma pra sempre feito o jogo original.
 """
 
 import sys
+import time
 
-from .config import Cor
+from .config import INTERVALO_AUTOSAVE_SEGUNDOS, Cor
 from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
 from .dados.especializacoes import NIVEL_MINIMO_ESPECIALIZACAO
@@ -180,6 +181,23 @@ def _aguardar_revive_se_necessario(personagem, slots):
       sys.exit()
 
 
+_estado_autosave = {'ultimo': None}
+
+
+def _talvez_autosalvar(personagem, slots):
+  """Salva sozinho a cada INTERVALO_AUTOSAVE_SEGUNDOS, sem interromper o
+  jogador — verificado nos loops principais (vila, dungeon, mundo aberto).
+  Silencioso de propósito: como a tela é limpa a cada troca de menu, qualquer
+  aviso impresso aqui desapareceria antes de dar tempo de ler."""
+  agora = time.monotonic()
+  if _estado_autosave['ultimo'] is None:
+    _estado_autosave['ultimo'] = agora
+    return
+  if agora - _estado_autosave['ultimo'] >= INTERVALO_AUTOSAVE_SEGUNDOS:
+    salvar_slots(slots)
+    _estado_autosave['ultimo'] = agora
+
+
 def _tela_inventario(personagem):
   while True:
     nomes_pocoes = [nome for nome, qtd in personagem.pocoes.items() if qtd > 0]
@@ -216,6 +234,7 @@ def _tela_loja(personagem):
 def _tela_dungeon(personagem, dungeon_id, slots):
   dungeon = DUNGEONS[dungeon_id]
   while True:
+    _talvez_autosalvar(personagem, slots)
     andar_num = personagem.andar_atual[dungeon_id]
     andar = dungeon.andares[andar_num - 1]
 
@@ -276,6 +295,7 @@ def _tela_mapa_mundo(personagem, slots):
     'C': _entrar_cratera_callback,
   }
   while True:
+    _talvez_autosalvar(personagem, slots)
     resultado = mundo.explorar_mapa(personagem, MAPA_ILYRATH, eventos, 'Mapa de Ilyrath')
     if resultado is None:
       return
@@ -292,6 +312,7 @@ def _tela_mapa_mundo(personagem, slots):
 
 def _tela_vila(personagem, slots):
   while True:
+    _talvez_autosalvar(personagem, slots)
     if personagem.morto:
       _aguardar_revive_se_necessario(personagem, slots)
 

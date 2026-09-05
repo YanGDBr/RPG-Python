@@ -57,6 +57,39 @@ def test_caixa_slot_preenchido_mostra_nome_classe_e_nivel():
   assert 'Nv.7' in caixa
 
 
+def test_autosalvar_nao_salva_na_primeira_chamada(monkeypatch):
+  """A primeira checagem só marca o início da contagem — não faz sentido
+  salvar no exato instante em que o jogador entrou na tela."""
+  jogo._estado_autosave['ultimo'] = None
+  chamadas_salvar = []
+  monkeypatch.setattr(jogo, 'salvar_slots', lambda slots: chamadas_salvar.append(slots))
+  monkeypatch.setattr(jogo.time, 'monotonic', lambda: 1000.0)
+
+  jogo._talvez_autosalvar(Personagem(nome='teste'), slots=['s'])
+
+  assert chamadas_salvar == []
+
+
+def test_autosalvar_dispara_apos_o_intervalo_configurado(monkeypatch):
+  jogo._estado_autosave['ultimo'] = None
+  chamadas_salvar = []
+  monkeypatch.setattr(jogo, 'salvar_slots', lambda slots: chamadas_salvar.append(slots))
+  relogio = {'agora': 1000.0}
+  monkeypatch.setattr(jogo.time, 'monotonic', lambda: relogio['agora'])
+
+  personagem = Personagem(nome='teste')
+  jogo._talvez_autosalvar(personagem, slots=['s'])  # marca o início
+  assert chamadas_salvar == []
+
+  relogio['agora'] += jogo.INTERVALO_AUTOSAVE_SEGUNDOS - 1
+  jogo._talvez_autosalvar(personagem, slots=['s'])  # ainda não passou o suficiente
+  assert chamadas_salvar == []
+
+  relogio['agora'] += 2
+  jogo._talvez_autosalvar(personagem, slots=['s'])  # agora sim
+  assert chamadas_salvar == [['s']]
+
+
 def test_entrar_cratera_bloqueado_antes_de_liberar():
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   mensagens = []
