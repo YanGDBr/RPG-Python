@@ -97,3 +97,9 @@ AUTOBATALHA_VIDA_MINIMA_PERCENTUAL = 30
 
 # Reputação da guilda: cada tier libera missões melhores.
 REPUTACAO_TIERS = [(0, 'Novato'), (100, 'Experiente'), (300, 'Veterano'), (600, 'Lendário')]
+
+# Quadro de missões da guilda: um quadro por andar já visitado, com um número
+# fixo de missões sorteadas, e um limite de missões equipadas ao mesmo tempo.
+QUANTIDADE_MISSOES_POR_QUADRO = 3
+MAX_MISSOES_ATIVAS = 2
+CUSTO_RENOVAR_QUADRO = 100

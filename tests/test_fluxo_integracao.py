@@ -103,7 +103,7 @@ def test_monstro_da_missao_tem_mais_chance_de_aparecer_na_exploracao(monkeypatch
   outros, e a missão quase nunca avançava."""
   personagem = _personagem_cavaleiro()
   andar = DUNGEONS['habusken'].andares[0]  # comuns: 3x Slime, 2x Kobold, 1x Lobo
-  personagem.missao_monstro = 'Lobo'  # o mais raro naturalmente (1 em 6)
+  personagem.missoes_ativas = [{'monstro': 'Lobo', 'quantidade_atual': 0, 'quantidade_alvo': 3}]  # o mais raro naturalmente (1 em 6)
 
   # 1º randint de cada chamada = checagem de chefe (qualquer valor != 1 evita);
   # 2º = checagem de "achou monstro comum" (valor <= peso_monstro dispara).

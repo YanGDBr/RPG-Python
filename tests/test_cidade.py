@@ -179,3 +179,92 @@ def test_ferreiro_pausa_sem_nada_pra_encantar():
       aguardar=lambda: chamadas_aguardar.append(1))
 
   assert len(chamadas_aguardar) >= 1
+
+
+def _fake_menu_sequencia(sequencia):
+  fila = list(sequencia)
+  return lambda _titulo, _opcoes, **_kw: fila.pop(0)
+
+
+def test_guilda_so_mostra_dungeons_ja_liberadas():
+  personagem = _personagem()  # nenhuma dungeon extra liberada
+  opcoes_vistas = []
+
+  def _fake_menu(_titulo, opcoes, **_kw):
+    opcoes_vistas.append(opcoes)
+    return None
+
+  cidade.tela_guilda(personagem, escrever=lambda *_a, **_k: None,
+                      ler_acao=_fake_menu, aguardar=lambda: None, _quadros_cache={})
+
+  assert opcoes_vistas[0] == ['Dungeon de Habusken']
+
+
+def test_guilda_mostra_dungeons_liberadas_conforme_progresso():
+  personagem = _personagem()
+  personagem.torre_arcana_liberada = True
+  opcoes_vistas = []
+
+  def _fake_menu(_titulo, opcoes, **_kw):
+    opcoes_vistas.append(opcoes)
+    return None
+
+  cidade.tela_guilda(personagem, escrever=lambda *_a, **_k: None,
+                      ler_acao=_fake_menu, aguardar=lambda: None, _quadros_cache={})
+
+  assert opcoes_vistas[0] == ['Dungeon de Habusken', 'Torre Arcana']
+
+
+def test_quadro_de_andares_mostra_so_ate_o_maior_andar_ja_visitado():
+  personagem = _personagem()
+  personagem.maior_andar_visitado['habusken'] = 2
+  opcoes_vistas = []
+
+  def _fake_menu(_titulo, opcoes, **_kw):
+    opcoes_vistas.append(opcoes)
+    return None
+
+  # 1ª chamada = escolhe "Dungeon de Habusken"; 2ª (dentro de _tela_quadro_andares)
+  # já é a que queremos inspecionar.
+  respostas = iter([0, None, None])
+  cidade.tela_guilda(personagem, escrever=lambda *_a, **_k: None,
+                      ler_acao=lambda t, o, **kw: (opcoes_vistas.append(o), next(respostas))[1],
+                      aguardar=lambda: None, _quadros_cache={})
+
+  assert len(opcoes_vistas[1]) == 2  # Andar 1 e Andar 2, nunca o 3
+
+
+def test_equipar_e_desequipar_missao_no_quadro():
+  personagem = _personagem()
+  # dungeon -> andar 1 -> equipa missão 1 -> desequipa a mesma -> sai de tudo
+  ler_acao = _fake_menu_sequencia([0, 0, 0, 0, None, None, None])
+
+  cidade.tela_guilda(personagem, escrever=lambda *_a, **_k: None,
+                      ler_acao=ler_acao, aguardar=lambda: None, _quadros_cache={})
+
+  assert personagem.missoes_ativas == []
+
+
+def test_nao_deixa_equipar_terceira_missao():
+  personagem = _personagem()
+  # dungeon -> andar 1 -> equipa missão 1, missão 2, tenta missão 3 -> sai de tudo
+  ler_acao = _fake_menu_sequencia([0, 0, 0, 1, 2, None, None, None])
+  mensagens = []
+
+  cidade.tela_guilda(personagem, escrever=mensagens.append,
+                      ler_acao=ler_acao, aguardar=lambda: None, _quadros_cache={})
+
+  assert len(personagem.missoes_ativas) == 2
+  assert any('já tem' in m for m in mensagens)
+
+
+def test_renovar_quadro_cobra_moedas():
+  personagem = _personagem()
+  saldo_antes = personagem.moeda_cobre
+  # dungeon -> andar 1 -> "Renovar quadro" (índice 3, após as 3 missões) -> sai de tudo
+  ler_acao = _fake_menu_sequencia([0, 0, 3, None, None, None])
+
+  cidade.tela_guilda(personagem, escrever=lambda *_a, **_k: None,
+                      ler_acao=ler_acao, aguardar=lambda: None, _quadros_cache={})
+
+  assert personagem.moeda_cobre == saldo_antes - 100

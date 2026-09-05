@@ -244,6 +244,8 @@ def _tela_dungeon(personagem, dungeon_id, slots):
       personagem.andar_atual[dungeon_id] -= 1
     elif acao == 'Subir de andar':
       personagem.andar_atual[dungeon_id] += 1
+      personagem.maior_andar_visitado[dungeon_id] = max(
+          personagem.maior_andar_visitado.get(dungeon_id, 1), personagem.andar_atual[dungeon_id])
     elif acao == 'Sair da dungeon':
       return
 

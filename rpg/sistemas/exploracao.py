@@ -131,10 +131,11 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
 
   if random.randint(1, peso_monstro + 2) <= peso_monstro:
     pool = list(andar.monstros_comuns)
-    if personagem.missao_monstro and personagem.missao_monstro in andar.monstros_comuns:
-      # Dobra a chance do monstro da missão ativa aparecer, senão ele só
-      # aparecia na mesma proporção dos outros e a missão nunca avançava.
-      pool += [personagem.missao_monstro] * len(andar.monstros_comuns)
+    # Dobra a chance de cada monstro com missão ativa aparecer, senão eles só
+    # apareciam na mesma proporção dos outros e a missão nunca avançava.
+    monstros_com_missao = {m['monstro'] for m in personagem.missoes_ativas} & set(andar.monstros_comuns)
+    for nome_monstro_missao in monstros_com_missao:
+      pool += [nome_monstro_missao] * len(andar.monstros_comuns)
     nome_monstro = random.choice(pool)
     elite = random.randint(1, CHANCE_MONSTRO_ELITE) == 1
     prefixo_elite = f'{Cor.AMARELO}[ELITE] {Cor.RESET}' if elite else ''

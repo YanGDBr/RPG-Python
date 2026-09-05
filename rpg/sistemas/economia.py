@@ -10,7 +10,8 @@ automaticamente para qualquer monstro novo que a gente adicionar.
 import random
 from math import trunc
 
-from ..config import REPUTACAO_TIERS
+from ..config import MAX_MISSOES_ATIVAS, QUANTIDADE_MISSOES_POR_QUADRO, REPUTACAO_TIERS
+from ..dados.dungeons import DUNGEONS
 from ..dados.monstros import MONSTROS
 
 TAXA_CONVERSAO = 1000
@@ -53,40 +54,43 @@ def converter(personagem, origem, destino, quantidade):
   return False, 'Só é possível converter entre moedas vizinhas (cobre <-> prata <-> ouro).'
 
 
-def gerar_missoes(personagem):
-  # Qualquer monstro comum (de qualquer andar já visitado ou não) pode virar
-  # missão — a recompensa já escala com o nível do monstro, então não tem
-  # motivo pra travar o sorteio pelo nível do personagem (isso fazia as
-  # missões nunca saírem dos monstros do início do jogo).
-  candidatos = [nome for nome, m in MONSTROS.items() if not m.chefe]
+def gerar_missoes_do_andar(personagem, dungeon_id, andar_numero):
+  """O quadro de missões de um andar específico — só sorteia entre os
+  monstros comuns daquele andar, então o quadro sempre bate com o que o
+  jogador está de fato enfrentando ali."""
+  andar = DUNGEONS[dungeon_id].andares[andar_numero - 1]
   indice_tier, _ = tier_reputacao(personagem.reputacao_guilda)
   bonus_tier_percentual = indice_tier * 10
 
   missoes = []
-  for _ in range(3):
-    nome_monstro = random.choice(candidatos)
+  for indice_quadro in range(QUANTIDADE_MISSOES_POR_QUADRO):
+    nome_monstro = random.choice(andar.monstros_comuns)
     monstro = MONSTROS[nome_monstro]
     quantidade = random.randint(1, 5)
     missoes.append({
+      'dungeon_id': dungeon_id,
+      'andar': andar_numero,
+      'quadro_indice': indice_quadro,
       'monstro': nome_monstro,
-      'quantidade': quantidade,
+      'quantidade_alvo': quantidade,
       'recompensa_exp': trunc(quantidade * monstro.nivel * 2 * (1 + bonus_tier_percentual / 100)),
       'recompensa_moedas': trunc(quantidade * monstro.nivel * 3 * (1 + bonus_tier_percentual / 100)),
     })
   return missoes
 
 
+def missao_equipada(personagem, missao):
+  return any(m['dungeon_id'] == missao['dungeon_id'] and m['andar'] == missao['andar']
+             and m['quadro_indice'] == missao['quadro_indice'] for m in personagem.missoes_ativas)
+
+
 def aceitar_missao(personagem, missao):
-  personagem.missao_monstro = missao['monstro']
-  personagem.missao_quantidade_alvo = missao['quantidade']
-  personagem.missao_quantidade_atual = 0
-  personagem.missao_recompensa_exp = missao['recompensa_exp']
-  personagem.missao_recompensa_moedas = missao['recompensa_moedas']
+  if len(personagem.missoes_ativas) >= MAX_MISSOES_ATIVAS:
+    return False
+  personagem.missoes_ativas.append({**missao, 'quantidade_atual': 0})
+  return True
 
 
-def abandonar_missao(personagem):
-  personagem.missao_monstro = ''
-  personagem.missao_quantidade_alvo = 0
-  personagem.missao_quantidade_atual = 0
-  personagem.missao_recompensa_exp = 0
-  personagem.missao_recompensa_moedas = 0
+def abandonar_missao(personagem, indice):
+  if 0 <= indice < len(personagem.missoes_ativas):
+    del personagem.missoes_ativas[indice]

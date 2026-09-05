@@ -67,11 +67,13 @@ class Personagem:
   cratera_vhalos_liberado: bool = False
   abismo_epilogo_mostrado: bool = False
 
-  missao_monstro: str = ''
-  missao_quantidade_alvo: int = 0
-  missao_quantidade_atual: int = 0
-  missao_recompensa_exp: int = 0
-  missao_recompensa_moedas: int = 0
+  # Cada missão: {dungeon_id, andar, quadro_indice, monstro, quantidade_alvo,
+  # quantidade_atual, recompensa_exp, recompensa_moedas}. No máximo
+  # MAX_MISSOES_ATIVAS (ver config.py) ao mesmo tempo.
+  missoes_ativas: List[dict] = field(default_factory=list)
+  maior_andar_visitado: Dict[str, int] = field(
+      default_factory=lambda: {'habusken': 1, 'torre_arcana': 1, 'abismo_submerso': 1,
+                                 'cratera_vhalos': 1})
 
   treinamento_habusken: int = 0
   eten: bool = False

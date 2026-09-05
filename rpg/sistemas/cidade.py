@@ -4,10 +4,12 @@ import random
 import string
 import time
 
-from ..config import (BONUS_ETEN_PERCENTUAL, ENCANTAMENTO_CUSTO_PRATA_BASE,
-                       ENCANTAMENTO_INCREMENTO, ENCANTAMENTO_MATERIAL,
-                       ENCANTAMENTO_MAXIMO_ARMADURA, ENCANTAMENTO_MAXIMO_ARMA,
+from ..config import (BONUS_ETEN_PERCENTUAL, CUSTO_RENOVAR_QUADRO,
+                       ENCANTAMENTO_CUSTO_PRATA_BASE, ENCANTAMENTO_INCREMENTO,
+                       ENCANTAMENTO_MATERIAL, ENCANTAMENTO_MAXIMO_ARMADURA,
+                       ENCANTAMENTO_MAXIMO_ARMA, MAX_MISSOES_ATIVAS,
                        REPUTACAO_TIERS, Cor)
+from ..dados.dungeons import DUNGEONS
 from ..dados.especializacoes import (ESPECIALIZACOES, ESPECIALIZACOES_POR_CLASSE,
                                       NIVEL_MINIMO_ESPECIALIZACAO)
 from ..dados.habilidades import HABILIDADES, HABILIDADES_DESBLOQUEAVEIS
@@ -15,7 +17,7 @@ from ..dados.receitas import RECEITAS
 from ..entrada import aguardar_leitura
 from ..entrada import menu as menu_padrao
 from ..entrada import pedir_numero, perguntar_sim_nao
-from ..interface import limpar_tela
+from ..interface import limpar_tela, ljust_visivel
 from . import crafting as sistema_crafting
 from . import economia, equipamento, inventario
 
@@ -207,49 +209,126 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
     aguardar()
 
 
-def tela_guilda(personagem, escrever=print, ler_acao=None, aguardar=None, _missoes_cache={}):
+_LARGURA_QUADRO = 58
+
+
+def _linha_quadro(texto):
+  return f'|{ljust_visivel(" " + texto, _LARGURA_QUADRO - 2)}|'
+
+
+def _desenhar_quadro(titulo, linhas):
+  borda = '+' + '-' * (_LARGURA_QUADRO - 2) + '+'
+  corpo = [borda, _linha_quadro(f'{Cor.BRANCO}{titulo}{Cor.RESET}'), borda]
+  for linha in linhas:
+    corpo.append(_linha_quadro(linha))
+  corpo.append(borda)
+  return '\n'.join(corpo)
+
+
+def _resumo_missoes_ativas(personagem):
+  if not personagem.missoes_ativas:
+    return f'  {Cor.CINZA}Nenhuma missão equipada.{Cor.RESET}'
+  linhas = []
+  for missao in personagem.missoes_ativas:
+    dungeon_nome = DUNGEONS[missao['dungeon_id']].nome
+    linhas.append(f'  {Cor.BRANCO}{missao["monstro"]}{Cor.RESET} '
+                   f'({missao["quantidade_atual"]}/{missao["quantidade_alvo"]}) '
+                   f'— {dungeon_nome}, Andar {missao["andar"]}')
+  return '\n'.join(linhas)
+
+
+def tela_guilda(personagem, escrever=print, ler_acao=None, aguardar=None, _quadros_cache={}):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
-  if personagem.nome not in _missoes_cache:
-    _missoes_cache[personagem.nome] = economia.gerar_missoes(personagem)
   while True:
-    missoes = _missoes_cache[personagem.nome]
-    opcoes = [f'Matar {m["quantidade"]}x {m["monstro"]} — {Cor.VERDE}{m["recompensa_exp"]} exp, '
-              f'{m["recompensa_moedas"]} cobres{Cor.RESET}' for m in missoes]
-    opcoes.append('Renovar missões (100 cobres)')
-    if personagem.missao_monstro:
-      opcoes.append(f'Abandonar missão atual ({personagem.missao_monstro})')
+    dungeons_disponiveis = ['habusken']
+    if personagem.torre_arcana_liberada:
+      dungeons_disponiveis.append('torre_arcana')
+    if personagem.abismo_submerso_liberado:
+      dungeons_disponiveis.append('abismo_submerso')
+    if personagem.cratera_vhalos_liberado:
+      dungeons_disponiveis.append('cratera_vhalos')
 
     _, nome_tier = economia.tier_reputacao(personagem.reputacao_guilda)
-    titulo = (f'{equipamento.resumo_status(personagem)}\n\n{Cor.ROSA}Guilda{Cor.RESET}\n'
-              f'Reputação: {personagem.reputacao_guilda} ({Cor.AMARELO}{nome_tier}{Cor.RESET})')
-    if personagem.missao_monstro:
-      titulo += (f'\nMissão ativa: matar {personagem.missao_monstro} '
-                 f'({personagem.missao_quantidade_atual}/{personagem.missao_quantidade_alvo})')
+    titulo = (f'{equipamento.resumo_status(personagem)}\n\n{Cor.ROSA}Guilda de Aventureiros{Cor.RESET}\n'
+              f'Reputação: {personagem.reputacao_guilda} ({Cor.AMARELO}{nome_tier}{Cor.RESET})\n\n'
+              f'Missões equipadas ({len(personagem.missoes_ativas)}/{MAX_MISSOES_ATIVAS}):\n'
+              f'{_resumo_missoes_ativas(personagem)}\n\n'
+              f'Escolha o quadro de missões de qual dungeon:')
+    opcoes = [DUNGEONS[d].nome for d in dungeons_disponiveis]
+    escolha = ler_acao(titulo, opcoes)
+    if escolha is None:
+      return
+    _tela_quadro_andares(personagem, dungeons_disponiveis[escolha], escrever, ler_acao, aguardar,
+                          _quadros_cache)
+
+
+def _tela_quadro_andares(personagem, dungeon_id, escrever, ler_acao, aguardar, quadros_cache):
+  dungeon = DUNGEONS[dungeon_id]
+  while True:
+    maior = max(personagem.maior_andar_visitado.get(dungeon_id, 1),
+                personagem.andar_atual.get(dungeon_id, 1))
+    opcoes = [f'Andar {n} — {dungeon.andares[n - 1].nome}' for n in range(1, maior + 1)]
+    titulo = (f'{Cor.ROSA}Guilda — {dungeon.nome}{Cor.RESET}\n\n'
+              f'Só existe quadro de missões dos andares que você já pisou.\n'
+              f'Escolha um andar:')
+    escolha = ler_acao(titulo, opcoes)
+    if escolha is None:
+      return
+    _tela_quadro_missoes(personagem, dungeon_id, escolha + 1, escrever, ler_acao, aguardar, quadros_cache)
+
+
+def _tela_quadro_missoes(personagem, dungeon_id, andar_numero, escrever, ler_acao, aguardar, quadros_cache):
+  chave = (personagem.nome, dungeon_id, andar_numero)
+  if chave not in quadros_cache:
+    quadros_cache[chave] = economia.gerar_missoes_do_andar(personagem, dungeon_id, andar_numero)
+
+  while True:
+    quadro = quadros_cache[chave]
+    linhas_quadro = []
+    for missao in quadro:
+      marca = f'{Cor.VERDE}[x]{Cor.RESET}' if economia.missao_equipada(personagem, missao) else '[ ]'
+      linhas_quadro.append(f'{marca} Matar {missao["quantidade_alvo"]}x {missao["monstro"]} — '
+                            f'{missao["recompensa_exp"]} exp, {missao["recompensa_moedas"]} cobres')
+    quadro_ascii = _desenhar_quadro(
+        f'Andar {andar_numero} — {DUNGEONS[dungeon_id].nome}', linhas_quadro)
+
+    titulo = (f'{equipamento.resumo_status(personagem)}\n\n{quadro_ascii}\n\n'
+              f'Missões equipadas ({len(personagem.missoes_ativas)}/{MAX_MISSOES_ATIVAS}):\n'
+              f'{_resumo_missoes_ativas(personagem)}')
+
+    opcoes = []
+    for indice, missao in enumerate(quadro):
+      equipada = economia.missao_equipada(personagem, missao)
+      opcoes.append(f'{"Desequipar" if equipada else "Equipar"} missão {indice + 1}')
+    opcoes.append(f'Renovar quadro ({CUSTO_RENOVAR_QUADRO} cobres)')
 
     escolha = ler_acao(titulo, opcoes)
     if escolha is None:
       return
-    if escolha < len(missoes):
-      if personagem.missao_monstro:
-        escrever(f'{Cor.VERMELHO}Você já está em uma missão. Abandone-a primeiro.{Cor.RESET}')
-        aguardar()
-        continue
-      economia.aceitar_missao(personagem, missoes[escolha])
-      escrever(f'{Cor.VERDE}Missão aceita!{Cor.RESET}')
-      aguardar()
-    elif escolha == len(missoes):
-      if personagem.moeda_cobre < 100:
-        escrever(f'{Cor.VERMELHO}Você não tem 100 cobres.{Cor.RESET}')
-        aguardar()
-        continue
-      personagem.moeda_cobre -= 100
-      _missoes_cache[personagem.nome] = economia.gerar_missoes(personagem)
-      escrever(f'{Cor.VERDE}Missões renovadas.{Cor.RESET}')
+
+    if escolha < len(quadro):
+      missao = quadro[escolha]
+      if economia.missao_equipada(personagem, missao):
+        indice_ativo = next(i for i, m in enumerate(personagem.missoes_ativas)
+                             if m['dungeon_id'] == missao['dungeon_id'] and m['andar'] == missao['andar']
+                             and m['quadro_indice'] == missao['quadro_indice'])
+        economia.abandonar_missao(personagem, indice_ativo)
+        escrever(f'{Cor.AMARELO}Missão desequipada.{Cor.RESET}')
+      elif economia.aceitar_missao(personagem, missao):
+        escrever(f'{Cor.VERDE}Missão equipada!{Cor.RESET}')
+      else:
+        escrever(f'{Cor.VERMELHO}Você já tem {MAX_MISSOES_ATIVAS} missões equipadas. '
+                 f'Desequipe uma primeiro.{Cor.RESET}')
       aguardar()
     else:
-      economia.abandonar_missao(personagem)
-      escrever(f'{Cor.AMARELO}Missão abandonada.{Cor.RESET}')
+      if personagem.moeda_cobre < CUSTO_RENOVAR_QUADRO:
+        escrever(f'{Cor.VERMELHO}Você não tem {CUSTO_RENOVAR_QUADRO} cobres.{Cor.RESET}')
+        aguardar()
+        continue
+      personagem.moeda_cobre -= CUSTO_RENOVAR_QUADRO
+      quadros_cache[chave] = economia.gerar_missoes_do_andar(personagem, dungeon_id, andar_numero)
+      escrever(f'{Cor.VERDE}Quadro renovado.{Cor.RESET}')
       aguardar()
 
 

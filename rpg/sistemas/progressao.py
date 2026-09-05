@@ -116,20 +116,20 @@ def conceder_recompensas(personagem, monstro_base, escrever, elite=False):
 
 
 def _verificar_missao(personagem, monstro_base, escrever):
-  if personagem.missao_monstro != monstro_base.nome:
-    return
-  personagem.missao_quantidade_atual += 1
-  if personagem.missao_quantidade_atual >= personagem.missao_quantidade_alvo:
-    personagem.exp += personagem.missao_recompensa_exp
-    personagem.moeda_cobre += personagem.missao_recompensa_moedas
-    personagem.moedas_totais_ganhas += personagem.missao_recompensa_moedas
-    personagem.missoes_completadas += 1
-    personagem.reputacao_guilda += REPUTACAO_GANHA_POR_MISSAO
-    escrever(f'{Cor.VERDE}Missão concluída! Você ganhou {personagem.missao_recompensa_exp} de exp, '
-             f'{personagem.missao_recompensa_moedas} cobres e {REPUTACAO_GANHA_POR_MISSAO} '
-             f'de reputação com a guilda.{Cor.RESET}')
-    personagem.missao_monstro = ''
-    personagem.missao_quantidade_alvo = 0
-    personagem.missao_quantidade_atual = 0
-    personagem.missao_recompensa_exp = 0
-    personagem.missao_recompensa_moedas = 0
+  concluidas = []
+  for missao in personagem.missoes_ativas:
+    if missao['monstro'] != monstro_base.nome:
+      continue
+    missao['quantidade_atual'] += 1
+    if missao['quantidade_atual'] >= missao['quantidade_alvo']:
+      personagem.exp += missao['recompensa_exp']
+      personagem.moeda_cobre += missao['recompensa_moedas']
+      personagem.moedas_totais_ganhas += missao['recompensa_moedas']
+      personagem.missoes_completadas += 1
+      personagem.reputacao_guilda += REPUTACAO_GANHA_POR_MISSAO
+      escrever(f'{Cor.VERDE}Missão concluída! Você ganhou {missao["recompensa_exp"]} de exp, '
+               f'{missao["recompensa_moedas"]} cobres e {REPUTACAO_GANHA_POR_MISSAO} '
+               f'de reputação com a guilda.{Cor.RESET}')
+      concluidas.append(missao)
+  for missao in concluidas:
+    personagem.missoes_ativas.remove(missao)
