@@ -1,5 +1,6 @@
 """Constantes globais: cores de terminal, caminhos e parâmetros de balanceamento."""
 
+import sys
 from pathlib import Path
 
 
@@ -19,7 +20,13 @@ class Cor:
 # Fundo destacado usado para marcar a opção selecionada nos menus de seta.
 DESTAQUE = '\033[7m'
 
-DIRETORIO_BASE = Path(__file__).resolve().parent.parent
+if getattr(sys, 'frozen', False):
+  # Rodando como .exe empacotado (PyInstaller): salvar ao lado do .exe, não
+  # na pasta temporária onde o --onefile se descompacta a cada execução.
+  DIRETORIO_BASE = Path(sys.executable).resolve().parent
+else:
+  DIRETORIO_BASE = Path(__file__).resolve().parent.parent
+
 ARQUIVO_SAVE = DIRETORIO_BASE / 'contas.json'
 
 # Balanceamento

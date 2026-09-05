@@ -4,3 +4,8 @@ __pycache__/
 usuarios.pickle
 contas.json
 .pytest_cache/
+
+# artefatos de build do PyInstaller (gerados por build_exe.bat)
+build/
+dist/
+*.spec

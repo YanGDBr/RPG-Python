@@ -12,6 +12,24 @@ python -m venv .venv
 .venv\Scripts\python main.py
 ```
 
+Ou, se já tiver Python instalado, só dar um duplo-clique em `jogar.bat` (ele cria
+o ambiente e instala as dependências sozinho na primeira vez).
+
+## Gerando um .exe independente
+
+`jogar.bat` ainda precisa de Python instalado na máquina. Pra gerar um `.exe`
+que roda sozinho em qualquer Windows, sem precisar instalar nada:
+
+```
+build_exe.bat
+```
+
+Isso gera `dist\RPG_Habusken.exe` — um único arquivo com o Python e todas as
+dependências embutidos (~7 MB), roda sozinho. O save (`contas.json`) fica
+salvo do lado do `.exe`. Cada nova versão do código precisa rodar o
+`build_exe.bat` de novo pra gerar um `.exe` atualizado — o arquivo em si não é
+versionado no git (é gerado, não é código-fonte).
+
 ## Estrutura (branch `update`)
 
 O jogo foi reorganizado num pacote `rpg/`, por responsabilidade:
