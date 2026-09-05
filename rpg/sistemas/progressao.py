@@ -60,7 +60,7 @@ def conceder_recompensas(personagem, monstro_base, escrever):
 
   personagem.moeda_cobre += moedas
   personagem.exp += exp
-  escrever(f'{Cor.VERDE}Você ganhou {exp} de experiência e {moedas} moedas de cobre.{Cor.RESET}')
+  escrever(f'{Cor.VERDE}Você ganhou {exp} de experiência e {moedas} cobres.{Cor.RESET}')
 
   for nome_item, chance in monstro_base.drops_item:
     if random.random() < chance:
@@ -95,7 +95,7 @@ def _verificar_missao(personagem, monstro_base, escrever):
     personagem.exp += personagem.missao_recompensa_exp
     personagem.moeda_cobre += personagem.missao_recompensa_moedas
     escrever(f'{Cor.VERDE}Missão concluída! Você ganhou {personagem.missao_recompensa_exp} de exp e '
-             f'{personagem.missao_recompensa_moedas} moedas de cobre.{Cor.RESET}')
+             f'{personagem.missao_recompensa_moedas} cobres.{Cor.RESET}')
     personagem.missao_monstro = ''
     personagem.missao_quantidade_alvo = 0
     personagem.missao_quantidade_atual = 0

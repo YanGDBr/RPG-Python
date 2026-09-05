@@ -6,6 +6,7 @@ nenhum — só o acessório de "achar sala do chefe" funcionava de verdade. Aqui
 tudo passa por estas funções, então nenhum bônus fica esquecido.
 """
 
+from ..config import Cor
 from ..dados.classes import CLASSES
 from ..dados.itens import ACESSORIOS, ARMADURAS, ARMAS, ARMAS_LENDARIAS
 
@@ -65,3 +66,15 @@ def efeito_inicial_de_batalha_acessorio(personagem):
   if acessorio and acessorio.efeito == 'queimadura_inicial':
     return ('Queimadura', acessorio.valor)
   return None
+
+
+def resumo_status(personagem):
+  """Uma linha compacta com nível/exp/vida/mana/saldo — usada no topo de quase
+  toda tela, pra nunca precisar entrar em outro menu só pra conferir isso."""
+  vida_max = vida_maxima_efetiva(personagem)
+  mana_max = mana_maxima_efetiva(personagem)
+  return (f'{Cor.BRANCO}Nv.{personagem.nivel}{Cor.RESET} '
+          f'(Exp {personagem.exp}/{personagem.exp_para_subir})  '
+          f'{Cor.VERMELHO}Vida {personagem.vida}/{vida_max}{Cor.RESET}  '
+          f'{Cor.AZUL}Mana {personagem.mana}/{mana_max}{Cor.RESET}  '
+          f'{Cor.AMARELO}{personagem.moeda_cobre} cobres{Cor.RESET}')

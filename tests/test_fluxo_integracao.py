@@ -4,10 +4,12 @@ aceitam leitor/escritor injetáveis, dá pra simular um jogador de verdade sem
 precisar de um terminal interativo.
 """
 
+import itertools
 import random
 from collections import deque
 
 from rpg.dados.classes import CLASSES
+from rpg.dados.dungeons import DUNGEONS
 from rpg.dados.mapas import MAPAS
 from rpg.dados.monstros import MONSTROS
 from rpg.modelos.personagem import Personagem
@@ -91,6 +93,33 @@ def test_explorar_um_andar_e_lutar_ate_vencer():
   # personagem tem que continuar num estado consistente e sem exceções.
   assert personagem.vida >= 0
   assert personagem.fome == 9  # aplicar_desgaste_fome rodou (começa em 10)
+
+
+def test_monstro_da_missao_tem_mais_chance_de_aparecer_na_exploracao(monkeypatch):
+  """A guilda dá uma missão pra matar um monstro específico do andar — sem
+  favorecer esse monstro na exploração, encontrá-lo era pura sorte igual aos
+  outros, e a missão quase nunca avançava."""
+  personagem = _personagem_cavaleiro()
+  andar = DUNGEONS['habusken'].andares[0]  # comuns: 3x Slime, 2x Kobold, 1x Lobo
+  personagem.missao_monstro = 'Lobo'  # o mais raro naturalmente (1 em 6)
+
+  # 1º randint de cada chamada = checagem de chefe (qualquer valor != 1 evita);
+  # 2º = checagem de "achou monstro comum" (valor <= peso_monstro dispara).
+  sequencia = itertools.cycle([2, 1])
+  monkeypatch.setattr(exploracao.random, 'randint', lambda a, b: next(sequencia))
+
+  encontrados = []
+
+  def _confirmar(pergunta):
+    encontrados.append(pergunta)
+    return False
+
+  for _ in range(300):
+    exploracao._resolver_evento(personagem, 'habusken', andar, lambda *_a, **_k: None,
+                                 _confirmar, None, lambda: None)
+
+  proporcao_lobo = sum(1 for p in encontrados if 'Lobo' in p) / len(encontrados)
+  assert proporcao_lobo > 1 / 6
 
 
 def test_vitoria_concede_recompensas_e_possivelmente_sobe_de_nivel():

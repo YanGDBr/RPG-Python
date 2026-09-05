@@ -16,6 +16,7 @@ from ..dados.mapas import MAPAS
 from ..dados.monstros import MONSTROS
 from ..entrada import aguardar_leitura, ler_tecla, perguntar_sim_nao
 from ..interface import limpar_tela
+from . import equipamento
 from .batalha import ResultadoBatalha, batalhar
 from .equipamento import chance_boss_extra_acessorio
 from .inventario import consumir_efeito_ativado
@@ -39,8 +40,9 @@ def _encontrar_entrada(mapa):
   raise ValueError('mapa sem entrada (E)')
 
 
-def _desenhar_mapa(mapa, posicao, andar):
-  linhas = [f'  {Cor.BRANCO}{andar.nome}{Cor.RESET} — Andar {andar.numero} ({andar.faixa_nivel})\n']
+def _desenhar_mapa(mapa, posicao, andar, personagem):
+  linhas = [f'  {equipamento.resumo_status(personagem)}\n',
+            f'  {Cor.BRANCO}{andar.nome}{Cor.RESET} — Andar {andar.numero} ({andar.faixa_nivel})\n']
   for y, linha in enumerate(mapa):
     celulas = []
     for x, caractere in enumerate(linha):
@@ -80,7 +82,7 @@ def explorar(personagem, dungeon_id, *, escrever=None, leitor_tecla=None, limpar
 
   while True:
     limpar()
-    escrever(_desenhar_mapa(mapa, posicao, andar))
+    escrever(_desenhar_mapa(mapa, posicao, andar, personagem))
     tecla = leitor_tecla()
     if tecla == 'esc':
       return
@@ -128,7 +130,12 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
     escrever(f'{Cor.CIANO}O item que você usou reduz a chance de encontrar um monstro.{Cor.RESET}')
 
   if random.randint(1, peso_monstro + 2) <= peso_monstro:
-    nome_monstro = random.choice(andar.monstros_comuns)
+    pool = list(andar.monstros_comuns)
+    if personagem.missao_monstro and personagem.missao_monstro in andar.monstros_comuns:
+      # Dobra a chance do monstro da missão ativa aparecer, senão ele só
+      # aparecia na mesma proporção dos outros e a missão nunca avançava.
+      pool += [personagem.missao_monstro] * len(andar.monstros_comuns)
+    nome_monstro = random.choice(pool)
     pergunta = f'{Cor.AMARELO}Você encontrou um {nome_monstro}!{Cor.RESET}\nDeseja lutar contra ele?'
     if ler_confirmacao(pergunta):
       _lutar(personagem, dungeon_id, nome_monstro, escrever, ler_acao_batalha, aguardar)
@@ -137,7 +144,7 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
   if random.randint(1, 2) == 1:
     moedas = random.randint(5, 15 + andar.numero * 5)
     personagem.moeda_cobre += moedas
-    escrever(f'{Cor.VERDE}Você encontrou {moedas} moedas de cobre!{Cor.RESET}')
+    escrever(f'{Cor.VERDE}Você encontrou {moedas} cobres!{Cor.RESET}')
   else:
     escrever(f'{Cor.CINZA}Você explorou a dungeon e não encontrou nada.{Cor.RESET}')
 

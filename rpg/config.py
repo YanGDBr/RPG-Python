@@ -31,8 +31,16 @@ ARQUIVO_SAVE = DIRETORIO_BASE / 'contas.json'
 
 # Balanceamento
 CHANCE_CRITICO_BASE = 8          # em porcentagem
+CHANCE_CRITICO_MAXIMA = 60        # nunca passa disso, por mais que se empilhe sorte/acessório/habilidade
 MULTIPLICADOR_CRITICO = 1.6
 MULTIPLICADOR_FRAQUEZA_ELEMENTAL = 1.5
 MULTIPLICADOR_RESISTENCIA_ELEMENTAL = 0.5
 FOME_MAXIMA = 10
 FOME_CRITICA = 3
+
+# Cada ponto de Poder soma esse tanto de dano percentual (junto com arma,
+# Etén, raça etc. — tudo somado antes de aplicar sobre o dano base, ao invés
+# de multiplicar em cadeia, que fazia o dano explodir rápido demais).
+PODER_DANO_PERCENTUAL_POR_PONTO = 2
+BONUS_ETEN_PERCENTUAL = 15
+LIMITE_DEBUFF_PERCENTUAL = 80     # bônus percentual nunca deixa o dano cair abaixo de 20% do base

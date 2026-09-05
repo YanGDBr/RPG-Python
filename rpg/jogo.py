@@ -14,7 +14,7 @@ from .entrada import pedir_texto
 from .interface import limpar_tela
 from .modelos.personagem import Personagem
 from .persistencia import carregar_contas, gerar_hash_senha, salvar_contas, verificar_senha
-from .sistemas import cidade, exploracao, inventario, loja
+from .sistemas import cidade, equipamento, exploracao, inventario, loja
 from .sistemas.progressao import tentar_reviver
 
 HISTORIA_INICIAL = """Você era um cidadão de uma cidade no interior do Brasil, um policial respeitado. Sua
@@ -24,7 +24,7 @@ andares. Vendo que você foi um bom policial, Deus o reencarnou em um mundo de f
 e habilidades, para que aproveitasse a vida do jeito que quisesse. Nesse mundo existem dungeons cuja origem
 é misteriosa — surgiram há 1800 anos, num mundo que vive por volta do período medieval.
 
-Você acorda em um corpo adulto, numa casa simples, com uma mochila contendo 100 moedas de cobre, um pouco
+Você acorda em um corpo adulto, numa casa simples, com uma mochila contendo 100 cobres, um pouco
 de comida e documentos de identidade. Decide se tornar um aventureiro e desvendar o mistério das dungeons.
 """
 
@@ -123,7 +123,7 @@ def _tela_inventario(personagem):
       print(f'{Cor.CIANO}Seu inventário de itens está vazio.{Cor.RESET}')
       input('Enter para continuar...')
       return
-    escolha = menu_padrao('Inventário', opcoes)
+    escolha = menu_padrao(f'{equipamento.resumo_status(personagem)}\n\nInventário', opcoes)
     if escolha is None:
       return
     if escolha < len(nomes_pocoes):
@@ -137,7 +137,7 @@ def _tela_loja(personagem):
   ecrans = [loja.loja_itens, loja.loja_pocoes, loja.loja_equipamentos, loja.loja_armaduras]
   while True:
     opcoes = ['Itens/Acessórios/Comida', 'Poções', 'Equipamentos', 'Armaduras']
-    escolha = menu_padrao('Loja', opcoes)
+    escolha = menu_padrao(f'{equipamento.resumo_status(personagem)}\n\nLoja', opcoes)
     if escolha is None:
       return
     ecrans[escolha](personagem)
@@ -157,7 +157,8 @@ def _tela_dungeon(personagem, dungeon_id, contas):
       opcoes.append('Subir de andar')
     opcoes.append('Sair da dungeon')
 
-    titulo = (f'{dungeon.nome} — Andar {andar_num}: {Cor.BRANCO}{andar.nome}{Cor.RESET}\n'
+    titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
+              f'{dungeon.nome} — Andar {andar_num}: {Cor.BRANCO}{andar.nome}{Cor.RESET}\n'
               f'{andar.faixa_nivel}\nChefe deste andar: {andar.chefe}')
     escolha = menu_padrao(titulo, opcoes, com_voltar=False)
     acao = opcoes[escolha]
@@ -190,8 +191,9 @@ def _tela_vila(personagem, contas):
                'Salvar Dados', 'Salvar e Sair']
 
     cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
-    titulo = (f'{Cor.BRANCO}Vila Habusken — {personagem.nome} (Nível {personagem.nivel}){Cor.RESET}\n'
-              f'{cor_fome}Fome: {personagem.fome}/10{Cor.RESET}')
+    titulo = (f'{Cor.BRANCO}Vila Habusken — {personagem.nome}{Cor.RESET}\n'
+              f'{equipamento.resumo_status(personagem)}  '
+              f'{cor_fome}Fome {personagem.fome}/10{Cor.RESET}')
     escolha = menu_padrao(titulo, opcoes, com_voltar=False)
     acao = opcoes[escolha]
 

@@ -38,6 +38,33 @@ def test_curandeira_pausa_quando_nao_tem_moedas():
   assert len(chamadas_aguardar) >= 1
 
 
+def test_mestre_habusken_apaga_a_tela_antes_de_pedir_a_sequencia():
+  """Regressão: depois de mostrar as letras (e esperar 3s), a tela tinha que
+  ser apagada antes do jogador digitar a sequência de volta — não estava."""
+  personagem = _personagem()
+  personagem.chefes_derrotados.append('Slime Gigante')
+  personagem.moeda_cobre = 50
+  eventos = []
+
+  respostas_menu = iter([0, 1])  # treinar, depois voltar
+
+  def _fake_menu(_titulo, _opcoes, **_kw):
+    return next(respostas_menu)
+
+  def _entrada_texto(_pergunta):
+    eventos.append('pediu_sequencia')
+    return ''
+
+  cidade.tela_mestre_habusken(
+      personagem, escrever=lambda *_a, **_k: None, ler_acao=_fake_menu,
+      entrada_texto=_entrada_texto, esperar=lambda _s: None,
+      aguardar=lambda: None, limpar=lambda: eventos.append('limpar'))
+
+  assert eventos.count('limpar') >= 2
+  assert eventos[-1] == 'pediu_sequencia'
+  assert eventos[-2] == 'limpar'
+
+
 def test_status_pausa_sem_pontos_disponiveis():
   personagem = _personagem()
   personagem.pontos_status = 0

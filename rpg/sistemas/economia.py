@@ -42,10 +42,11 @@ def converter(personagem, origem, destino, quantidade):
 
 
 def gerar_missoes(personagem):
-  candidatos = [nome for nome, m in MONSTROS.items()
-                if not m.chefe and m.nivel <= personagem.nivel + 10]
-  if not candidatos:
-    candidatos = [nome for nome, m in MONSTROS.items() if not m.chefe]
+  # Qualquer monstro comum (de qualquer andar já visitado ou não) pode virar
+  # missão — a recompensa já escala com o nível do monstro, então não tem
+  # motivo pra travar o sorteio pelo nível do personagem (isso fazia as
+  # missões nunca saírem dos monstros do início do jogo).
+  candidatos = [nome for nome, m in MONSTROS.items() if not m.chefe]
 
   missoes = []
   for _ in range(3):

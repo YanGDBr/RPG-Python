@@ -5,9 +5,10 @@ comum, então o jogo não acumula profundidade de recursão a cada turno.
 
 import random
 
-from ..config import (CHANCE_CRITICO_BASE, FOME_CRITICA, Cor, MULTIPLICADOR_CRITICO,
-                       MULTIPLICADOR_FRAQUEZA_ELEMENTAL,
-                       MULTIPLICADOR_RESISTENCIA_ELEMENTAL)
+from ..config import (BONUS_ETEN_PERCENTUAL, CHANCE_CRITICO_BASE, CHANCE_CRITICO_MAXIMA,
+                       FOME_CRITICA, Cor, LIMITE_DEBUFF_PERCENTUAL, MULTIPLICADOR_CRITICO,
+                       MULTIPLICADOR_FRAQUEZA_ELEMENTAL, MULTIPLICADOR_RESISTENCIA_ELEMENTAL,
+                       PODER_DANO_PERCENTUAL_POR_PONTO)
 from ..dados.habilidades import HABILIDADES
 from ..dados.racas import RACAS
 from ..entrada import aguardar_leitura, menu as menu_padrao
@@ -31,35 +32,44 @@ def multiplicador_elemental(elemento_ataque, monstro):
 
 
 def chance_de_critico(personagem, habilidade):
-  return (CHANCE_CRITICO_BASE + habilidade.bonus_critico + personagem.sorte
-          + personagem.bonus_critico_batalha
-          + equipamento.chance_critico_extra_acessorio(personagem))
+  chance = (CHANCE_CRITICO_BASE + habilidade.bonus_critico + personagem.sorte
+            + personagem.bonus_critico_batalha
+            + equipamento.chance_critico_extra_acessorio(personagem))
+  return min(CHANCE_CRITICO_MAXIMA, chance)
 
 
 def _dano_base(personagem, habilidade, monstro):
   """Dano determinístico (sem rolar crítico) — reaproveitado tanto pelo
-  cálculo real quanto pela prévia mostrada no menu de batalha."""
+  cálculo real quanto pela prévia mostrada no menu de batalha.
+
+  Todo bônus percentual (Poder, arma, poção, Etén, raça, fome crítica) é
+  somado num total só e aplicado de uma vez sobre o dano base. Antes cada
+  bônus multiplicava o resultado do anterior (`dano += dano * x/100` em
+  sequência), o que fazia stacks de bônus explodirem bem além do esperado —
+  por isso dava pra derrubar monstro de andar muito acima do nível real.
+  """
   arma = equipamento.resolver_arma(personagem)
-  dano = float(habilidade.dano_base)
-  dano += dano * (personagem.poder * 3) / 100
-  dano += dano * arma.bonus_poder_percentual / 100
+  bonus_percentual = personagem.poder * PODER_DANO_PERCENTUAL_POR_PONTO
+  bonus_percentual += arma.bonus_poder_percentual
   if personagem.bonus_dano_batalha:
-    dano += dano * personagem.bonus_dano_batalha / 100
+    bonus_percentual += personagem.bonus_dano_batalha
 
   debuff = efeitos.bonus_debuff_poder(personagem.efeitos_ativos)
   if debuff:
-    dano -= dano * debuff / 100
+    bonus_percentual -= debuff
 
   if personagem.eten:
-    dano += dano * 30 / 100
+    bonus_percentual += BONUS_ETEN_PERCENTUAL
 
   if personagem.fome <= FOME_CRITICA:
-    dano -= dano * 10 / 100
+    bonus_percentual -= 10
 
   raca = RACAS.get(personagem.raca)
   if raca and raca.bonus_tipo == 'poder':
-    dano += dano * raca.valor / 100
+    bonus_percentual += raca.valor
 
+  bonus_percentual = max(-LIMITE_DEBUFF_PERCENTUAL, bonus_percentual)
+  dano = habilidade.dano_base * (1 + bonus_percentual / 100)
   return dano * multiplicador_elemental(habilidade.elemento, monstro)
 
 
@@ -109,6 +119,9 @@ def monstro_ataca(personagem, monstro, escrever):
     return
 
   dano = random.randint(monstro.base.ataque_min, monstro.base.ataque_max)
+  debuff = efeitos.bonus_debuff_poder(monstro.efeitos_ativos)
+  if debuff:
+    dano = max(1, round(dano - dano * debuff / 100))
   descricao = random.choice(monstro.base.descricoes_ataque)
   personagem.vida = max(0, personagem.vida - dano)
   escrever(f'{descricao}, causando {Cor.VERMELHO}{dano} de dano{Cor.RESET} em você.')
@@ -230,6 +243,14 @@ def batalhar(personagem, monstro_base, escrever=None, ler_acao=None, aguardar=No
     mana_max = equipamento.mana_maxima_efetiva(personagem)
     personagem.mana = min(mana_max, personagem.mana + round(mana_max * 0.1))
 
+    if not monstro.vivo:
+      aguardar()
+      return ResultadoBatalha.VITORIA, monstro
+
+    # Queimadura/Sangramento/Veneno aplicados NO monstro nunca eram
+    # processados — só os efeitos do próprio jogador tinham esse tratamento.
+    monstro.vida = efeitos.processar_efeitos_continuos(
+        monstro.efeitos_ativos, monstro.vida, escrever, monstro.nome)
     if not monstro.vivo:
       aguardar()
       return ResultadoBatalha.VITORIA, monstro

@@ -10,11 +10,16 @@ from ..dados.lojas import (CATALOGO_ACESSORIOS, CATALOGO_ARMADURAS,
                             COMIDAS_VENDIDAS, armas_disponiveis_para_classe)
 from ..entrada import aguardar_leitura
 from ..entrada import menu as menu_padrao
+from . import equipamento
+
+
+def _titulo(personagem, texto):
+  return f'{equipamento.resumo_status(personagem)}\n\n{texto}'
 
 
 def _pagar(personagem, preco, escrever):
   if personagem.moeda_cobre < preco:
-    escrever(f'{Cor.VERMELHO}Você não tem moedas de cobre suficientes.{Cor.RESET}')
+    escrever(f'{Cor.VERMELHO}Você não tem cobres suficientes.{Cor.RESET}')
     return False
   personagem.moeda_cobre -= preco
   return True
@@ -24,8 +29,8 @@ def loja_pocoes(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    opcoes = [f'Poção de {p.nome} — {p.preco} moedas de cobre' for p in CATALOGO_POCOES]
-    escolha = ler_acao('Loja de Poções', opcoes)
+    opcoes = [f'Poção de {p.nome} — {p.preco} cobres' for p in CATALOGO_POCOES]
+    escolha = ler_acao(_titulo(personagem, 'Loja de Poções'), opcoes)
     if escolha is None:
       return
     pocao = CATALOGO_POCOES[escolha]
@@ -39,8 +44,8 @@ def loja_armaduras(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    opcoes = [f'{a.nome} — {a.preco} moedas ({a.descricao})' for a in CATALOGO_ARMADURAS]
-    escolha = ler_acao('Loja de Armaduras', opcoes)
+    opcoes = [f'{a.nome} — {a.preco} cobres ({a.descricao})' for a in CATALOGO_ARMADURAS]
+    escolha = ler_acao(_titulo(personagem, 'Loja de Armaduras'), opcoes)
     if escolha is None:
       return
     armadura = CATALOGO_ARMADURAS[escolha]
@@ -58,10 +63,10 @@ def loja_itens(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    opcoes = ([f'{a.nome} — {a.preco} moedas ({a.descricao})' for a in CATALOGO_ACESSORIOS] +
-              [f'{i.nome} — {i.preco} moedas ({i.descricao})' for i in CATALOGO_ITENS_CONSUMIVEIS] +
-              [f'{c} — {PRECO_COMIDA} moedas' for c in COMIDAS_VENDIDAS])
-    escolha = ler_acao('Loja de Itens/Acessórios/Comida', opcoes)
+    opcoes = ([f'{a.nome} — {a.preco} cobres ({a.descricao})' for a in CATALOGO_ACESSORIOS] +
+              [f'{i.nome} — {i.preco} cobres ({i.descricao})' for i in CATALOGO_ITENS_CONSUMIVEIS] +
+              [f'{c} — {PRECO_COMIDA} cobres' for c in COMIDAS_VENDIDAS])
+    escolha = ler_acao(_titulo(personagem, 'Loja de Itens/Acessórios/Comida'), opcoes)
     if escolha is None:
       return
 
@@ -100,8 +105,8 @@ def loja_equipamentos(personagem, escrever=print, ler_acao=None, aguardar=None):
       escrever(f'{Cor.AMARELO}Nenhum equipamento novo disponível para o seu nível ainda.{Cor.RESET}')
       aguardar()
       return
-    opcoes = [f'{a.nome} — {a.preco} moedas ({a.bonus_poder_percentual}% de poder)' for a in armas]
-    escolha = ler_acao('Loja de Equipamentos', opcoes)
+    opcoes = [f'{a.nome} — {a.preco} cobres ({a.bonus_poder_percentual}% de poder)' for a in armas]
+    escolha = ler_acao(_titulo(personagem, 'Loja de Equipamentos'), opcoes)
     if escolha is None:
       return
     arma = armas[escolha]

@@ -4,14 +4,19 @@ import random
 import string
 import time
 
-from ..config import Cor
+from ..config import BONUS_ETEN_PERCENTUAL, Cor
 from ..dados.habilidades import HABILIDADES, HABILIDADES_DESBLOQUEAVEIS
 from ..dados.receitas import RECEITAS
 from ..entrada import aguardar_leitura
 from ..entrada import menu as menu_padrao
 from ..entrada import pedir_numero, perguntar_sim_nao
+from ..interface import limpar_tela
 from . import crafting as sistema_crafting
 from . import economia, equipamento, inventario
+
+
+def _titulo(personagem, texto):
+  return f'{equipamento.resumo_status(personagem)}\n\n{texto}'
 
 
 def tela_casa(personagem, escrever=print, ler_acao=None, aguardar=None):
@@ -19,7 +24,7 @@ def tela_casa(personagem, escrever=print, ler_acao=None, aguardar=None):
   aguardar = aguardar or aguardar_leitura
   while True:
     opcoes = ['Descansar (recupera tudo, 1x por nível)', 'Comer', 'Voltar']
-    escolha = ler_acao('Casa', opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Casa'), opcoes)
     if escolha is None or escolha == 2:
       return
     if escolha == 0:
@@ -47,9 +52,9 @@ def tela_curandeira(personagem, escrever=print, ler_acao=None, entrada_texto=inp
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    opcoes = [f'Restaurar {Cor.VERMELHO}vida{Cor.RESET} (1 moeda a cada 5 de vida)',
-              f'Restaurar {Cor.AZUL}mana{Cor.RESET} (1 moeda a cada 5 de mana)', 'Voltar']
-    escolha = ler_acao('Curandeira', opcoes)
+    opcoes = [f'Restaurar {Cor.VERMELHO}vida{Cor.RESET} (1 cobre a cada 5 de vida)',
+              f'Restaurar {Cor.AZUL}mana{Cor.RESET} (1 cobre a cada 5 de mana)', 'Voltar']
+    escolha = ler_acao(_titulo(personagem, 'Curandeira'), opcoes)
     if escolha is None or escolha == 2:
       return
 
@@ -68,10 +73,10 @@ def tela_curandeira(personagem, escrever=print, ler_acao=None, entrada_texto=inp
     quantidade = pedir_numero(f'Quanto de {recurso} deseja restaurar (máx {falta})? -->',
                                minimo=1, maximo=falta, entrada=entrada_texto, saida=escrever)
     custo = max(1, quantidade // 5)
-    if not perguntar_sim_nao(f'Isso vai custar {custo} moedas de cobre. Confirmar?'):
+    if not perguntar_sim_nao(f'Isso vai custar {custo} cobres. Confirmar?'):
       continue
     if personagem.moeda_cobre < custo:
-      escrever(f'{Cor.VERMELHO}Você não tem moedas de cobre suficientes.{Cor.RESET}')
+      escrever(f'{Cor.VERMELHO}Você não tem cobres suficientes.{Cor.RESET}')
       aguardar()
       continue
 
@@ -99,7 +104,7 @@ def tela_equipar_habilidades(personagem, escrever=print, ler_acao=None, aguardar
                      f'({Cor.AZUL}{h.mana} mana{Cor.RESET}, {Cor.VERMELHO}{h.dano_base} dano base{Cor.RESET}'
                      f'{efeito})')
 
-    escolha = ler_acao('Habilidades equipadas', opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Habilidades equipadas'), opcoes)
     if escolha is None or escolha < len(personagem.habilidades_equipadas):
       return
 
@@ -117,11 +122,7 @@ def tela_status(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    vida_max = equipamento.vida_maxima_efetiva(personagem)
-    mana_max = equipamento.mana_maxima_efetiva(personagem)
-    titulo = (f'Nível {personagem.nivel} — Exp {personagem.exp}/{personagem.exp_para_subir}\n'
-              f'{Cor.VERMELHO}Vida: {personagem.vida}/{vida_max}{Cor.RESET}   '
-              f'{Cor.AZUL}Mana: {personagem.mana}/{mana_max}{Cor.RESET}\n'
+    titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
               f'Poder: {personagem.poder}   Esquiva: {personagem.esquiva}%   Sorte: {personagem.sorte}\n'
               f'{Cor.BRANCO}Pontos de status disponíveis: {personagem.pontos_status}{Cor.RESET}')
     opcoes = ['+5 Vida máxima', '+5 Mana máxima', '+1 Poder', '+1 Sorte (crítico)', 'Equipar habilidades']
@@ -155,7 +156,8 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
     arma = equipamento.resolver_arma(personagem)
     armadura = equipamento.resolver_armadura(personagem)
     acessorio = equipamento.resolver_acessorio(personagem)
-    titulo = (f'Arma: {Cor.BRANCO}{arma.nome}{Cor.RESET} ({arma.bonus_poder_percentual}% poder)\n'
+    titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
+              f'Arma: {Cor.BRANCO}{arma.nome}{Cor.RESET} ({arma.bonus_poder_percentual}% poder)\n'
               f'Armadura: {Cor.BRANCO}{armadura.nome if armadura else "Nenhuma"}{Cor.RESET}\n'
               f'Acessório: {Cor.BRANCO}{acessorio.nome if acessorio else "Nenhum"}{Cor.RESET}')
 
@@ -204,12 +206,12 @@ def tela_guilda(personagem, escrever=print, ler_acao=None, aguardar=None, _misso
   while True:
     missoes = _missoes_cache[personagem.nome]
     opcoes = [f'Matar {m["quantidade"]}x {m["monstro"]} — {Cor.VERDE}{m["recompensa_exp"]} exp, '
-              f'{m["recompensa_moedas"]} moedas{Cor.RESET}' for m in missoes]
-    opcoes.append('Renovar missões (100 moedas)')
+              f'{m["recompensa_moedas"]} cobres{Cor.RESET}' for m in missoes]
+    opcoes.append('Renovar missões (100 cobres)')
     if personagem.missao_monstro:
       opcoes.append(f'Abandonar missão atual ({personagem.missao_monstro})')
 
-    titulo = f'{Cor.ROSA}Guilda{Cor.RESET}'
+    titulo = f'{equipamento.resumo_status(personagem)}\n\n{Cor.ROSA}Guilda{Cor.RESET}'
     if personagem.missao_monstro:
       titulo += (f'\nMissão ativa: matar {personagem.missao_monstro} '
                  f'({personagem.missao_quantidade_atual}/{personagem.missao_quantidade_alvo})')
@@ -227,7 +229,7 @@ def tela_guilda(personagem, escrever=print, ler_acao=None, aguardar=None, _misso
       aguardar()
     elif escolha == len(missoes):
       if personagem.moeda_cobre < 100:
-        escrever(f'{Cor.VERMELHO}Você não tem 100 moedas de cobre.{Cor.RESET}')
+        escrever(f'{Cor.VERMELHO}Você não tem 100 cobres.{Cor.RESET}')
         aguardar()
         continue
       personagem.moeda_cobre -= 100
@@ -251,8 +253,8 @@ def tela_desbloquear_habilidades(personagem, escrever=print, ler_acao=None, agua
       aguardar()
       return
     opcoes = [f'{Cor.BRANCO}{nome}{Cor.RESET} — nível {HABILIDADES[nome].nivel_minimo}, '
-              f'{HABILIDADES[nome].preco} moedas' for nome in candidatas]
-    escolha = ler_acao('Habilidades para desbloquear', opcoes)
+              f'{HABILIDADES[nome].preco} cobres' for nome in candidatas]
+    escolha = ler_acao(_titulo(personagem, 'Habilidades para desbloquear'), opcoes)
     if escolha is None:
       return
     nome = candidatas[escolha]
@@ -262,7 +264,7 @@ def tela_desbloquear_habilidades(personagem, escrever=print, ler_acao=None, agua
       aguardar()
       continue
     if personagem.moeda_cobre < habilidade.preco:
-      escrever(f'{Cor.VERMELHO}Você não tem moedas de cobre suficientes.{Cor.RESET}')
+      escrever(f'{Cor.VERMELHO}Você não tem cobres suficientes.{Cor.RESET}')
       aguardar()
       continue
     personagem.moeda_cobre -= habilidade.preco
@@ -275,9 +277,10 @@ def tela_bau(personagem, escrever=print, ler_acao=None, entrada_texto=input, agu
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    titulo = (f'Moedas de Cobre: {personagem.moeda_cobre}\n'
-              f'Moedas de Prata: {personagem.moeda_prata}\n'
-              f'Moedas de Ouro: {personagem.moeda_ouro}')
+    titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
+              f'Cobres: {personagem.moeda_cobre}\n'
+              f'Pratas: {personagem.moeda_prata}\n'
+              f'Ouros: {personagem.moeda_ouro}')
     opcoes = ['Cobre -> Prata (1000:1)', 'Prata -> Cobre', 'Prata -> Ouro (1000:1)', 'Ouro -> Prata', 'Voltar']
     escolha = ler_acao(titulo, opcoes)
     if escolha is None or escolha == 4:
@@ -292,31 +295,35 @@ def tela_bau(personagem, escrever=print, ler_acao=None, entrada_texto=input, agu
 
 
 def tela_mestre_habusken(personagem, escrever=print, ler_acao=None, entrada_texto=input,
-                          esperar=None, aguardar=None):
+                          esperar=None, aguardar=None, limpar=None):
   ler_acao = ler_acao or menu_padrao
   esperar = esperar or time.sleep
   aguardar = aguardar or aguardar_leitura
+  limpar = limpar or limpar_tela
   if 'Slime Gigante' not in personagem.chefes_derrotados:
     escrever(f'{Cor.VERMELHO}O Mestre de Habusken não te reconhece como discípulo. '
               f'Derrote o chefe do Andar 1 primeiro.{Cor.RESET}')
     aguardar()
     return
   while True:
-    opcoes = [f'Treinar (50 moedas) — {personagem.treinamento_habusken}% concluído', 'Voltar']
-    escolha = ler_acao('Mestre de Habusken', opcoes)
+    opcoes = [f'Treinar (50 cobres) — {personagem.treinamento_habusken}% concluído', 'Voltar']
+    escolha = ler_acao(_titulo(personagem, 'Mestre de Habusken'), opcoes)
     if escolha is None or escolha == 1:
       return
     if personagem.moeda_cobre < 50:
-      escrever(f'{Cor.VERMELHO}Você não tem 50 moedas de cobre.{Cor.RESET}')
+      escrever(f'{Cor.VERMELHO}Você não tem 50 cobres.{Cor.RESET}')
       aguardar()
       continue
     personagem.moeda_cobre -= 50
 
     letras = [random.choice(string.ascii_uppercase) for _ in range(5)]
+    limpar()
     escrever(f'{Cor.BRANCO}Decore a sequência de letras a seguir:{Cor.RESET}')
     for letra in letras:
       escrever(f'{Cor.AMARELO}{letra}{Cor.RESET}')
       esperar(1)
+    esperar(3)
+    limpar()
     resposta = entrada_texto('Digite as letras na ordem, separadas por espaço: -->')
     acertos = sum(1 for certa, digitada in zip(letras, resposta.upper().split()) if certa == digitada)
     personagem.treinamento_habusken = min(100, personagem.treinamento_habusken + acertos * 4)
@@ -324,7 +331,7 @@ def tela_mestre_habusken(personagem, escrever=print, ler_acao=None, entrada_text
     if personagem.treinamento_habusken >= 100 and not personagem.eten:
       personagem.eten = True
       escrever(f'{Cor.VERDE}Você concluiu o treinamento! Aprendeu Etén: '
-               f'+30% de dano em todos os ataques.{Cor.RESET}')
+               f'+{BONUS_ETEN_PERCENTUAL}% de dano em todos os ataques.{Cor.RESET}')
     aguardar()
 
 
@@ -337,7 +344,7 @@ def tela_crafting(personagem, escrever=print, ler_acao=None, aguardar=None):
     for receita in receitas:
       requisitos = ', '.join(f'{qtd}x {nome}' for nome, qtd in receita.materiais_necessarios.items())
       opcoes.append(f'{Cor.BRANCO}{receita.nome}{Cor.RESET} (precisa: {requisitos})')
-    escolha = ler_acao('Bancada de Trabalho', opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Bancada de Trabalho'), opcoes)
     if escolha is None:
       return
     sistema_crafting.craftar(personagem, receitas[escolha], escrever)

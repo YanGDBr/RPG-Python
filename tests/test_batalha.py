@@ -99,6 +99,66 @@ def test_opcao_de_habilidade_mostra_mana_e_dano_previsto():
   assert 'dano' in descricao
 
 
+def test_bonus_percentuais_somam_em_vez_de_multiplicar_em_cadeia():
+  """Regressão: cada bônus percentual (poder, arma, Etén...) multiplicava o
+  resultado do anterior, então o dano explodia rápido demais quando vários
+  bônus se acumulavam. Agora é tudo somado e aplicado de uma vez."""
+  from rpg.dados.habilidades import HABILIDADES
+  habilidade = HABILIDADES['Investida']  # dano_base 15
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])  # sem fraqueza/resistência física
+
+  personagem = _personagem_cavaleiro()  # raça Humano: +10% de poder
+  personagem.poder = 10   # 10 * 2% = +20%
+  personagem.eten = True  # +15%
+  # total esperado: 20% (poder) + 15% (Etén) + 10% (raça Humano) = +45%
+  dano_previsto = batalha.prever_dano(personagem, habilidade, monstro)
+  assert dano_previsto == round(15 * 1.45)
+
+
+def test_chance_de_critico_tem_teto():
+  from rpg.dados.habilidades import HABILIDADES
+  personagem = _personagem_cavaleiro()
+  personagem.sorte = 200  # tentativa de estourar o teto
+  chance = batalha.chance_de_critico(personagem, HABILIDADES['Investida'])
+  assert chance == 60
+
+
+def test_queimadura_aplicada_no_monstro_causa_dano_a_cada_rodada():
+  """Regressão: a Queimadura era aplicada no monstro mas nunca processada —
+  só os efeitos do jogador tinham o tick de dano contínuo."""
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  from rpg.sistemas import efeitos
+  efeitos.aplicar_efeito(monstro.efeitos_ativos, 'Queimadura', 2)
+  mensagens = []
+
+  vida_antes = monstro.vida
+  monstro.vida = efeitos.processar_efeitos_continuos(
+      monstro.efeitos_ativos, monstro.vida, mensagens.append, monstro.nome)
+
+  assert monstro.vida < vida_antes
+  assert any('Queimadura' in m or 'sofre' in m for m in mensagens)
+
+
+def test_fraqueza_no_monstro_reduz_o_dano_que_ele_causa():
+  from rpg.sistemas import efeitos
+  personagem = _personagem_cavaleiro()
+  monstro_normal = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  monstro_fraco = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  efeitos.aplicar_efeito(monstro_fraco.efeitos_ativos, 'Fraqueza', 2, valor=50)
+
+  random.seed(1)
+  vida_antes = personagem.vida
+  batalha.monstro_ataca(personagem, monstro_normal, lambda *_a, **_k: None)
+  dano_normal = vida_antes - personagem.vida
+
+  personagem.vida = vida_antes
+  random.seed(1)
+  batalha.monstro_ataca(personagem, monstro_fraco, lambda *_a, **_k: None)
+  dano_fraco = vida_antes - personagem.vida
+
+  assert dano_fraco < dano_normal
+
+
 def test_fuga_bem_sucedida_termina_em_fuga(monkeypatch):
   personagem = _personagem_cavaleiro()
   monkeypatch.setattr(batalha.random, 'randint', lambda a, b: 1)  # força sucesso na fuga

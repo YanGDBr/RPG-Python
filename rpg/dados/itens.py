@@ -7,13 +7,13 @@ from ..modelos.item import Acessorio, Armadura, Arma, ItemConsumivel, Material, 
 # --------------------------------------------------------------------- Armas
 # 1 arma inicial (grátis, em classes.py) + 2 tiers compráveis por classe.
 ARMAS = {
-  'Cajado de Madeira Velha': Arma('Cajado de Madeira Velha', 20, preco=70, classe='Mago'),
+  'Cajado de Madeira Velha': Arma('Cajado de Madeira Velha', 20, preco=70, classe='Mago', nivel_minimo=5),
   'Cajado Rúnico': Arma('Cajado Rúnico', 35, elemento='Fogo', preco=300, classe='Mago', nivel_minimo=15),
 
-  'Espada de Ferro': Arma('Espada de Ferro', 20, preco=70, classe='Cavaleiro'),
+  'Espada de Ferro': Arma('Espada de Ferro', 20, preco=70, classe='Cavaleiro', nivel_minimo=5),
   'Espada Flamejante': Arma('Espada Flamejante', 35, elemento='Fogo', preco=300, classe='Cavaleiro', nivel_minimo=15),
 
-  'Arco de Madeira': Arma('Arco de Madeira', 25, preco=70, classe='Arqueiro'),
+  'Arco de Madeira': Arma('Arco de Madeira', 25, preco=70, classe='Arqueiro', nivel_minimo=5),
   'Arco Élfico': Arma('Arco Élfico', 40, preco=300, classe='Arqueiro', nivel_minimo=15),
 }
 
