@@ -3,23 +3,26 @@ pagamento — no original cada categoria de loja tinha seu próprio bloco de
 código quase idêntico, com preços que às vezes nem batiam com o texto exibido.
 """
 
+from ..config import Cor
 from ..dados.itens import PRECO_COMIDA
 from ..dados.lojas import (CATALOGO_ACESSORIOS, CATALOGO_ARMADURAS,
                             CATALOGO_ITENS_CONSUMIVEIS, CATALOGO_POCOES,
                             COMIDAS_VENDIDAS, armas_disponiveis_para_classe)
+from ..entrada import aguardar_leitura
 from ..entrada import menu as menu_padrao
 
 
 def _pagar(personagem, preco, escrever):
   if personagem.moeda_cobre < preco:
-    escrever('Você não tem moedas de cobre suficientes.')
+    escrever(f'{Cor.VERMELHO}Você não tem moedas de cobre suficientes.{Cor.RESET}')
     return False
   personagem.moeda_cobre -= preco
   return True
 
 
-def loja_pocoes(personagem, escrever=print, ler_acao=None):
+def loja_pocoes(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
   while True:
     opcoes = [f'Poção de {p.nome} — {p.preco} moedas de cobre' for p in CATALOGO_POCOES]
     escolha = ler_acao('Loja de Poções', opcoes)
@@ -28,11 +31,13 @@ def loja_pocoes(personagem, escrever=print, ler_acao=None):
     pocao = CATALOGO_POCOES[escolha]
     if _pagar(personagem, pocao.preco, escrever):
       personagem.pocoes[pocao.nome] = personagem.pocoes.get(pocao.nome, 0) + 1
-      escrever(f'Você comprou uma Poção de {pocao.nome}.')
+      escrever(f'{Cor.VERDE}Você comprou uma Poção de {pocao.nome}.{Cor.RESET}')
+    aguardar()
 
 
-def loja_armaduras(personagem, escrever=print, ler_acao=None):
+def loja_armaduras(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
   while True:
     opcoes = [f'{a.nome} — {a.preco} moedas ({a.descricao})' for a in CATALOGO_ARMADURAS]
     escolha = ler_acao('Loja de Armaduras', opcoes)
@@ -40,15 +45,18 @@ def loja_armaduras(personagem, escrever=print, ler_acao=None):
       return
     armadura = CATALOGO_ARMADURAS[escolha]
     if armadura.nome in personagem.armaduras_guardadas or personagem.armadura_equipada == armadura.nome:
-      escrever('Você já tem essa armadura.')
+      escrever(f'{Cor.AMARELO}Você já tem essa armadura.{Cor.RESET}')
+      aguardar()
       continue
     if _pagar(personagem, armadura.preco, escrever):
       personagem.armaduras_guardadas.append(armadura.nome)
-      escrever(f'Você comprou {armadura.nome}. Equipe-a em Personagem.')
+      escrever(f'{Cor.VERDE}Você comprou {armadura.nome}. Equipe-a em Personagem.{Cor.RESET}')
+    aguardar()
 
 
-def loja_itens(personagem, escrever=print, ler_acao=None):
+def loja_itens(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
   while True:
     opcoes = ([f'{a.nome} — {a.preco} moedas ({a.descricao})' for a in CATALOGO_ACESSORIOS] +
               [f'{i.nome} — {i.preco} moedas ({i.descricao})' for i in CATALOGO_ITENS_CONSUMIVEIS] +
@@ -63,30 +71,34 @@ def loja_itens(personagem, escrever=print, ler_acao=None):
     if escolha < total_acessorios:
       acessorio = CATALOGO_ACESSORIOS[escolha]
       if acessorio.nome in personagem.acessorios_guardados or personagem.acessorio_equipado == acessorio.nome:
-        escrever('Você já tem esse acessório.')
+        escrever(f'{Cor.AMARELO}Você já tem esse acessório.{Cor.RESET}')
+        aguardar()
         continue
       if _pagar(personagem, acessorio.preco, escrever):
         personagem.acessorios_guardados.append(acessorio.nome)
-        escrever(f'Você comprou {acessorio.nome}. Equipe-o em Personagem.')
+        escrever(f'{Cor.VERDE}Você comprou {acessorio.nome}. Equipe-o em Personagem.{Cor.RESET}')
     elif escolha < total_acessorios + total_itens:
       item = CATALOGO_ITENS_CONSUMIVEIS[escolha - total_acessorios]
       if _pagar(personagem, item.preco, escrever):
         personagem.adicionar_item(item.nome)
-        escrever(f'Você comprou {item.nome}.')
+        escrever(f'{Cor.VERDE}Você comprou {item.nome}.{Cor.RESET}')
     else:
       nome_comida = COMIDAS_VENDIDAS[escolha - total_acessorios - total_itens]
       if _pagar(personagem, PRECO_COMIDA, escrever):
         personagem.comidas[nome_comida] = personagem.comidas.get(nome_comida, 0) + 1
-        escrever(f'Você comprou {nome_comida}.')
+        escrever(f'{Cor.VERDE}Você comprou {nome_comida}.{Cor.RESET}')
+    aguardar()
 
 
-def loja_equipamentos(personagem, escrever=print, ler_acao=None):
+def loja_equipamentos(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
   while True:
     armas = [a for a in armas_disponiveis_para_classe(personagem.classe)
              if a.nivel_minimo <= personagem.nivel]
     if not armas:
-      escrever('Nenhum equipamento novo disponível para o seu nível ainda.')
+      escrever(f'{Cor.AMARELO}Nenhum equipamento novo disponível para o seu nível ainda.{Cor.RESET}')
+      aguardar()
       return
     opcoes = [f'{a.nome} — {a.preco} moedas ({a.bonus_poder_percentual}% de poder)' for a in armas]
     escolha = ler_acao('Loja de Equipamentos', opcoes)
@@ -94,8 +106,10 @@ def loja_equipamentos(personagem, escrever=print, ler_acao=None):
       return
     arma = armas[escolha]
     if arma.nome in personagem.equipamentos_guardados or personagem.arma_equipada == arma.nome:
-      escrever('Você já tem essa arma.')
+      escrever(f'{Cor.AMARELO}Você já tem essa arma.{Cor.RESET}')
+      aguardar()
       continue
     if _pagar(personagem, arma.preco, escrever):
       personagem.equipamentos_guardados.append(arma.nome)
-      escrever(f'Você comprou {arma.nome}. Equipe-a em Personagem.')
+      escrever(f'{Cor.VERDE}Você comprou {arma.nome}. Equipe-a em Personagem.{Cor.RESET}')
+    aguardar()

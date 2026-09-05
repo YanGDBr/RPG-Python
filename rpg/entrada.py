@@ -83,6 +83,9 @@ def menu(titulo, opcoes, *, indice_inicial=0, com_voltar=True,
   escrever = escrever or print
   limpar = limpar or limpar_tela
 
+  destaque = '\033[7;1m'
+  reset = '\033[0m'
+
   indice = indice_inicial % len(opcoes)
   while True:
     limpar()
@@ -90,7 +93,10 @@ def menu(titulo, opcoes, *, indice_inicial=0, com_voltar=True,
       escrever(titulo)
     for i, rotulo in enumerate(opcoes):
       if i == indice:
-        escrever(f'  \033[7;1m> {rotulo} \033[0m')
+        # Reaplica o destaque depois de cada reset de cor embutido no rótulo,
+        # senão a primeira cor dentro da opção quebraria o realce ao selecionar.
+        rotulo_destacado = rotulo.replace(reset, reset + destaque)
+        escrever(f'  {destaque}> {rotulo_destacado} {reset}')
       else:
         escrever(f'    {rotulo}')
     if com_voltar:
@@ -111,6 +117,14 @@ def perguntar_sim_nao(pergunta, *, leitor=None, escrever=None, limpar=None):
   escolha = menu(pergunta, ['Sim', 'Não'], com_voltar=False,
                  leitor=leitor, escrever=escrever, limpar=limpar)
   return escolha == 0
+
+
+def aguardar_leitura(mensagem=None, entrada=input):
+  """Pausa até o jogador apertar Enter, antes de qualquer coisa que vá limpar
+  a tela (a próxima chamada de `menu()`, por exemplo) — sem isso, o aviso que
+  acabou de ser impresso desaparece antes de dar tempo de ler."""
+  from .config import Cor
+  entrada(mensagem or f'\n{Cor.VERDE}Pressione Enter para continuar...{Cor.RESET}')
 
 
 def pedir_numero(pergunta, minimo=None, maximo=None, entrada=input, saida=print):

@@ -4,13 +4,14 @@ from pathlib import Path
 
 
 class Cor:
-  AZUL = '\033[1;34m'
-  VERMELHO = '\033[1;31m'
-  VERDE = '\033[1;32m'
+  AZUL = '\033[1;34m'          # mana
+  VERMELHO = '\033[1;31m'      # vida, dano, queimadura/sangramento/veneno, erros
+  VERDE = '\033[1;32m'         # sucesso, cura, ganhos (exp/moedas), level up
+  BRANCO = '\033[1;37m'        # ênfase neutra (nomes de habilidade, títulos)
   NEGRITO = '\033[;1m'
-  AMARELO = '\033[1;93m'
-  ROSA = '\033[1;95m'
-  CIANO = '\033[1;36m'
+  AMARELO = '\033[1;93m'       # avisos, crítico, esquiva
+  ROSA = '\033[1;95m'          # buffs, curandeira, guilda
+  CIANO = '\033[1;36m'         # informação neutra
   CINZA = '\033[2;37m'
   RESET = '\033[0m'
 

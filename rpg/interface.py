@@ -9,10 +9,15 @@ def limpar_tela():
   os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def barra(atual, maximo, largura=20):
+def barra(atual, maximo, largura=20, cor=None):
   proporcao = 0.0 if maximo <= 0 else max(0.0, min(1.0, atual / maximo))
   preenchido = round(largura * proporcao)
-  return '[' + '#' * preenchido + '-' * (largura - preenchido) + f'] {atual}/{maximo}'
+  vazio = '-' * (largura - preenchido)
+  if cor:
+    parte_cheia = f'{cor}{"#" * preenchido}{Cor.RESET}'
+  else:
+    parte_cheia = '#' * preenchido
+  return f'[{parte_cheia}{vazio}] {atual}/{maximo}'
 
 
 def cabecalho(titulo):

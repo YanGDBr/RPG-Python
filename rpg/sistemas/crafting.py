@@ -1,13 +1,14 @@
 """Bancada de trabalho: materiais dropados por monstros viram poções e, com
 material dos dois chefes finais, a arma lendária da classe do jogador."""
 
+from ..config import Cor
 from ..dados.itens import ARMAS_LENDARIAS
 
 
 def craftar(personagem, receita, escrever):
   for nome, quantidade in receita.materiais_necessarios.items():
     if personagem.materiais.get(nome, 0) < quantidade:
-      escrever('Você não tem os materiais necessários para essa receita.')
+      escrever(f'{Cor.VERMELHO}Você não tem os materiais necessários para essa receita.{Cor.RESET}')
       return False
 
   for nome, quantidade in receita.materiais_necessarios.items():
@@ -18,10 +19,11 @@ def craftar(personagem, receita, escrever):
   if receita.resultado_tipo == 'pocao_craftada':
     atual = personagem.pocoes.get(receita.resultado_nome, 0)
     personagem.pocoes[receita.resultado_nome] = atual + receita.quantidade_resultado
-    escrever(f'Você craftou {receita.quantidade_resultado}x Poção de {receita.resultado_nome}!')
+    escrever(f'{Cor.VERDE}Você craftou {receita.quantidade_resultado}x '
+             f'Poção de {receita.resultado_nome}!{Cor.RESET}')
   elif receita.resultado_tipo == 'arma_lendaria':
     arma = ARMAS_LENDARIAS[receita.resultado_nome]
     personagem.equipamentos_guardados.append(arma.nome)
-    escrever(f'Você forjou {arma.nome}! Equipe-a em Personagem.')
+    escrever(f'{Cor.VERDE}Você forjou {arma.nome}! Equipe-a em Personagem.{Cor.RESET}')
 
   return True

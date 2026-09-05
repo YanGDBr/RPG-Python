@@ -1,5 +1,6 @@
 import random
 
+from rpg.config import Cor
 from rpg.dados.classes import CLASSES
 from rpg.dados.monstros import MONSTROS
 from rpg.modelos.monstro import MonstroBatalha
@@ -54,10 +55,48 @@ def test_batalha_termina_em_vitoria_com_poder_avassalador():
 
   resultado, monstro = batalha.batalhar(
       personagem, MONSTROS['Slime'], escrever=lambda *_a, **_k: None,
-      ler_acao=lambda titulo, opcoes, **kw: 0)
+      ler_acao=lambda titulo, opcoes, **kw: 0, aguardar=lambda: None)
 
   assert resultado == batalha.ResultadoBatalha.VITORIA
   assert monstro.vida == 0
+
+
+def test_batalha_pausa_ao_menos_uma_vez_por_rodada_para_dar_tempo_de_ler():
+  """Regressão: as mensagens de dano/efeito apareciam e a tela já limpava
+  antes de dar tempo de ler."""
+  random.seed(7)
+  personagem = _personagem_cavaleiro()
+  personagem.poder = 500
+  chamadas_aguardar = []
+
+  batalha.batalhar(
+      personagem, MONSTROS['Kobold'], escrever=lambda *_a, **_k: None,
+      ler_acao=lambda titulo, opcoes, **kw: 0,
+      aguardar=lambda: chamadas_aguardar.append(1))
+
+  assert len(chamadas_aguardar) >= 1
+
+
+def test_mensagem_de_dano_e_colorida_de_vermelho():
+  random.seed(1)
+  personagem = _personagem_cavaleiro()
+  personagem.poder = 10
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  mensagens = []
+
+  from rpg.dados.habilidades import HABILIDADES
+  batalha.personagem_ataca(personagem, HABILIDADES['Investida'], monstro, mensagens.append)
+
+  assert any(Cor.VERMELHO in m for m in mensagens)
+
+
+def test_opcao_de_habilidade_mostra_mana_e_dano_previsto():
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  from rpg.dados.habilidades import HABILIDADES
+  descricao = batalha._descricao_habilidade(personagem, HABILIDADES['Investida'], monstro)
+  assert 'mana' in descricao
+  assert 'dano' in descricao
 
 
 def test_fuga_bem_sucedida_termina_em_fuga(monkeypatch):
@@ -66,6 +105,7 @@ def test_fuga_bem_sucedida_termina_em_fuga(monkeypatch):
 
   resultado, _monstro = batalha.batalhar(
       personagem, MONSTROS['Slime'], escrever=lambda *_a, **_k: None,
-      ler_acao=lambda titulo, opcoes, **kw: len(opcoes) - 1)  # sempre "Tentar fugir"
+      ler_acao=lambda titulo, opcoes, **kw: len(opcoes) - 1,  # sempre "Tentar fugir"
+      aguardar=lambda: None)
 
   assert resultado == batalha.ResultadoBatalha.FUGA

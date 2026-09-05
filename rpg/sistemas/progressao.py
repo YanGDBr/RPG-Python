@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timedelta
 from math import trunc
 
-from ..config import FOME_CRITICA, FOME_MAXIMA
+from ..config import FOME_CRITICA, FOME_MAXIMA, Cor
 from ..dados.itens import MATERIAIS
 from ..dados.racas import RACAS
 from .inventario import consumir_efeito_ativado
@@ -15,7 +15,7 @@ def verificar_morte(personagem, escrever):
     return False
   personagem.morto = True
   personagem.momento_reviver = (datetime.now() + timedelta(minutes=5)).isoformat()
-  escrever('Você morreu! Poderá reviver em 5 minutos.')
+  escrever(f'{Cor.VERMELHO}Você morreu! Poderá reviver em 5 minutos.{Cor.RESET}')
   return True
 
 
@@ -36,10 +36,11 @@ def aplicar_desgaste_fome(personagem, escrever):
   descia uma vez no login e nunca mais fazia diferença nenhuma."""
   personagem.fome = max(0, personagem.fome - 1)
   if personagem.fome <= 0:
-    escrever('Você está faminto! Isso está drenando sua vida.')
+    escrever(f'{Cor.VERMELHO}Você está faminto! Isso está drenando sua vida.{Cor.RESET}')
     personagem.vida = max(0, personagem.vida - 5)
   elif personagem.fome <= FOME_CRITICA:
-    escrever('Sua fome está crítica — seus ataques causam menos dano até você comer.')
+    escrever(f'{Cor.AMARELO}Sua fome está crítica — seus ataques causam menos dano '
+             f'até você comer.{Cor.RESET}')
 
 
 def conceder_recompensas(personagem, monstro_base, escrever):
@@ -50,16 +51,16 @@ def conceder_recompensas(personagem, monstro_base, escrever):
   if bonus_drop:
     exp = trunc(exp + exp * bonus_drop / 100)
     moedas = trunc(moedas + moedas * bonus_drop / 100)
-    escrever('Recompensas aumentadas pelo Drop Buffer usado antes da batalha!')
+    escrever(f'{Cor.CIANO}Recompensas aumentadas pelo Drop Buffer usado antes da batalha!{Cor.RESET}')
 
   raca = RACAS.get(personagem.raca)
   if raca and raca.bonus_tipo == 'exp':
     exp = trunc(exp + exp * raca.valor / 100)
-    escrever('Bônus de experiência da sua raça aplicado.')
+    escrever(f'{Cor.CIANO}Bônus de experiência da sua raça aplicado.{Cor.RESET}')
 
   personagem.moeda_cobre += moedas
   personagem.exp += exp
-  escrever(f'Você ganhou {exp} de experiência e {moedas} moedas de cobre.')
+  escrever(f'{Cor.VERDE}Você ganhou {exp} de experiência e {moedas} moedas de cobre.{Cor.RESET}')
 
   for nome_item, chance in monstro_base.drops_item:
     if random.random() < chance:
@@ -67,7 +68,7 @@ def conceder_recompensas(personagem, monstro_base, escrever):
         personagem.adicionar_material(nome_item)
       else:
         personagem.adicionar_item(nome_item)
-      escrever(f'O {monstro_base.nome} deixou cair: {nome_item}!')
+      escrever(f'{Cor.VERDE}O {monstro_base.nome} deixou cair: {nome_item}!{Cor.RESET}')
 
   if monstro_base.chefe and monstro_base.nome not in personagem.chefes_derrotados:
     personagem.chefes_derrotados.append(monstro_base.nome)
@@ -80,7 +81,8 @@ def conceder_recompensas(personagem, monstro_base, escrever):
     personagem.exp_para_subir = personagem.nivel * 50
     subiu_nivel = True
   if subiu_nivel:
-    escrever(f'Você subiu para o nível {personagem.nivel}! Ganhou 3 pontos de status.')
+    escrever(f'{Cor.VERDE}Você subiu para o nível {personagem.nivel}! '
+             f'Ganhou 3 pontos de status.{Cor.RESET}')
 
   _verificar_missao(personagem, monstro_base, escrever)
 
@@ -92,8 +94,8 @@ def _verificar_missao(personagem, monstro_base, escrever):
   if personagem.missao_quantidade_atual >= personagem.missao_quantidade_alvo:
     personagem.exp += personagem.missao_recompensa_exp
     personagem.moeda_cobre += personagem.missao_recompensa_moedas
-    escrever(f'Missão concluída! Você ganhou {personagem.missao_recompensa_exp} de exp e '
-             f'{personagem.missao_recompensa_moedas} moedas de cobre.')
+    escrever(f'{Cor.VERDE}Missão concluída! Você ganhou {personagem.missao_recompensa_exp} de exp e '
+             f'{personagem.missao_recompensa_moedas} moedas de cobre.{Cor.RESET}')
     personagem.missao_monstro = ''
     personagem.missao_quantidade_alvo = 0
     personagem.missao_quantidade_atual = 0

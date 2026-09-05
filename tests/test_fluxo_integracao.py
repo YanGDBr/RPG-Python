@@ -34,7 +34,8 @@ def test_comprar_pocao_de_vida_debita_moedas_e_adiciona_ao_inventario():
   mensagens = []
 
   loja.loja_pocoes(personagem, escrever=mensagens.append,
-                    ler_acao=_leitor_menu_sequencia([0, None]))  # índice 0 = Poção de Vida
+                    ler_acao=_leitor_menu_sequencia([0, None]),  # índice 0 = Poção de Vida
+                    aguardar=lambda: None)
 
   assert personagem.pocoes.get('Vida', 0) == 1
   assert personagem.moeda_cobre == 200 - 30
@@ -53,7 +54,8 @@ def test_explorar_um_andar_e_lutar_ate_vencer():
       leitor_tecla=_leitor_tecla_ate_evento(),
       limpar=lambda: None,
       ler_confirmacao=lambda *_a, **_k: True,
-      ler_acao_batalha=lambda _titulo, _opcoes, **_kw: 0)  # sempre usa a 1ª habilidade
+      ler_acao_batalha=lambda _titulo, _opcoes, **_kw: 0,  # sempre usa a 1ª habilidade
+      aguardar=lambda: None)
 
   # Não importa qual dos 3 eventos aconteceu (monstro, moedas ou nada) — o
   # personagem tem que continuar num estado consistente e sem exceções.
@@ -81,7 +83,7 @@ def test_vitoria_concede_recompensas_e_possivelmente_sobe_de_nivel():
 
   resultado, monstro = batalha.batalhar(
       personagem, MONSTROS['Kobold'], escrever=mensagens.append,
-      ler_acao=lambda titulo, opcoes, **kw: 0)
+      ler_acao=lambda titulo, opcoes, **kw: 0, aguardar=lambda: None)
   assert resultado == batalha.ResultadoBatalha.VITORIA
 
   exp_antes = personagem.exp

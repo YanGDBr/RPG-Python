@@ -5,6 +5,7 @@ nada de função chamando a si mesma pra sempre feito o jogo original.
 
 import sys
 
+from .config import Cor
 from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
 from .dados.racas import RACAS
@@ -70,14 +71,14 @@ def _criar_personagem(nome, senha):
 def _registrar(contas):
   nome = pedir_texto('Nome de usuário: -->')
   if nome in contas:
-    print('Esse nome já está em uso.')
+    print(f'{Cor.VERMELHO}Esse nome já está em uso.{Cor.RESET}')
     input('Enter para continuar...')
     return None
   senha = pedir_texto('Senha: -->')
   personagem = _criar_personagem(nome, senha)
   contas[nome] = personagem
   salvar_contas(contas)
-  print('Conta criada com sucesso!')
+  print(f'{Cor.VERDE}Conta criada com sucesso!{Cor.RESET}')
   input('Enter para continuar...')
   return personagem
 
@@ -85,12 +86,12 @@ def _registrar(contas):
 def _entrar(contas):
   nome = pedir_texto('Nome de usuário: -->')
   if nome not in contas:
-    print('Nome não encontrado.')
+    print(f'{Cor.VERMELHO}Nome não encontrado.{Cor.RESET}')
     input('Enter para continuar...')
     return None
   senha = pedir_texto('Senha: -->')
   if not verificar_senha(senha, contas[nome].senha_hash):
-    print('Senha incorreta.')
+    print(f'{Cor.VERMELHO}Senha incorreta.{Cor.RESET}')
     input('Enter para continuar...')
     return None
   return contas[nome]
@@ -100,10 +101,10 @@ def _aguardar_revive_se_necessario(personagem, contas):
   while personagem.morto:
     limpar_tela()
     if tentar_reviver(personagem):
-      print('Você reviveu! Sua vida e mana foram restauradas.')
+      print(f'{Cor.VERDE}Você reviveu! Sua vida e mana foram restauradas.{Cor.RESET}')
       input('Enter para continuar...')
       return
-    escolha = menu_padrao('Você está morto. Aguarde 5 minutos para reviver.',
+    escolha = menu_padrao(f'{Cor.VERMELHO}Você está morto. Aguarde 5 minutos para reviver.{Cor.RESET}',
                            ['Tentar novamente', 'Salvar e sair do jogo'], com_voltar=False)
     if escolha == 1:
       salvar_contas(contas)
@@ -119,7 +120,7 @@ def _tela_inventario(personagem):
     opcoes += [f'{nome} x{personagem.inventario[nome]}' for nome in nomes_itens]
     if not opcoes:
       limpar_tela()
-      print('Seu inventário de itens está vazio.')
+      print(f'{Cor.CIANO}Seu inventário de itens está vazio.{Cor.RESET}')
       input('Enter para continuar...')
       return
     escolha = menu_padrao('Inventário', opcoes)
@@ -187,8 +188,9 @@ def _tela_vila(personagem, contas):
                'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho',
                'Salvar Dados', 'Salvar e Sair']
 
-    titulo = (f'Vila Habusken — {personagem.nome} (Nível {personagem.nivel})\n'
-              f'Fome: {personagem.fome}/10')
+    cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
+    titulo = (f'{Cor.BRANCO}Vila Habusken — {personagem.nome} (Nível {personagem.nivel}){Cor.RESET}\n'
+              f'{cor_fome}Fome: {personagem.fome}/10{Cor.RESET}')
     escolha = menu_padrao(titulo, opcoes, com_voltar=False)
     acao = opcoes[escolha]
 
@@ -220,11 +222,11 @@ def _tela_vila(personagem, contas):
       cidade.tela_crafting(personagem)
     elif acao == 'Salvar Dados':
       salvar_contas(contas)
-      print('Dados salvos com sucesso!')
+      print(f'{Cor.VERDE}Dados salvos com sucesso!{Cor.RESET}')
       input('Enter para continuar...')
     elif acao == 'Salvar e Sair':
       salvar_contas(contas)
-      print('Dados salvos. Até a próxima!')
+      print(f'{Cor.VERDE}Dados salvos. Até a próxima!{Cor.RESET}')
       sys.exit()
 
 
