@@ -157,7 +157,8 @@ def _tela_dungeon(personagem, dungeon_id, contas):
       opcoes.append('Subir de andar')
     opcoes.append('Sair da dungeon')
 
-    titulo = f'{dungeon.nome} — Andar {andar_num}\n{andar.faixa_nivel}\nChefe deste andar: {andar.chefe}'
+    titulo = (f'{dungeon.nome} — Andar {andar_num}: {Cor.BRANCO}{andar.nome}{Cor.RESET}\n'
+              f'{andar.faixa_nivel}\nChefe deste andar: {andar.chefe}')
     escolha = menu_padrao(titulo, opcoes, com_voltar=False)
     acao = opcoes[escolha]
 

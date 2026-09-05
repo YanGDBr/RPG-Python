@@ -2,12 +2,17 @@
 andar de qualquer dungeon — o bug antigo (andar 2 sorteando monstro do andar 1
 porque cada andar tinha sua própria função copiada e colada) não existe mais
 porque aqui só existe ESTA função, parametrizada pelos dados do andar.
+
+Cada andar tem seu próprio mapa desenhado (rpg/dados/mapas.py), com paredes de
+verdade bloqueando passagem — bem diferente da grade genérica de pontinhos
+que existia antes, onde todo andar era visualmente idêntico.
 """
 
 import random
 
 from ..config import Cor
 from ..dados.dungeons import DUNGEONS
+from ..dados.mapas import MAPAS
 from ..dados.monstros import MONSTROS
 from ..entrada import aguardar_leitura, ler_tecla, perguntar_sim_nao
 from ..interface import limpar_tela
@@ -16,7 +21,7 @@ from .equipamento import chance_boss_extra_acessorio
 from .inventario import consumir_efeito_ativado
 from .progressao import aplicar_desgaste_fome, conceder_recompensas, verificar_morte
 
-TAMANHO_MAPA = 6
+CELULAS_ANDAVEIS = ('.', '?', 'E')
 
 DESLOCAMENTOS = {
   'cima': (-1, 0), 'w': (-1, 0),
@@ -26,20 +31,36 @@ DESLOCAMENTOS = {
 }
 
 
-def _desenhar_mapa(posicao, andar):
-  linhas = [f'  Explorando o Andar {andar.numero} — {andar.faixa_nivel}\n']
-  for y in range(TAMANHO_MAPA):
-    linha = ''
-    for x in range(TAMANHO_MAPA):
-      linha += ' @ ' if [y, x] == posicao else ' . '
-    linhas.append(linha)
+def _encontrar_entrada(mapa):
+  for y, linha in enumerate(mapa):
+    x = linha.find('E')
+    if x != -1:
+      return [y, x]
+  raise ValueError('mapa sem entrada (E)')
+
+
+def _desenhar_mapa(mapa, posicao, andar):
+  linhas = [f'  {Cor.BRANCO}{andar.nome}{Cor.RESET} — Andar {andar.numero} ({andar.faixa_nivel})\n']
+  for y, linha in enumerate(mapa):
+    celulas = []
+    for x, caractere in enumerate(linha):
+      if [y, x] == posicao:
+        celulas.append(f'{Cor.VERDE}@{Cor.RESET}')
+      elif caractere == '?':
+        celulas.append(f'{Cor.AMARELO}?{Cor.RESET}')
+      elif caractere in ('.', 'E'):
+        celulas.append('.')
+      else:
+        celulas.append(f'{Cor.CINZA}{caractere}{Cor.RESET}')
+    linhas.append(' '.join(celulas))
   linhas.append('\nWASD ou setas para andar — Esc para voltar sem explorar.')
   return '\n'.join(linhas)
 
 
 def explorar(personagem, dungeon_id, *, escrever=None, leitor_tecla=None, limpar=None,
              ler_confirmacao=None, ler_acao_batalha=None, aguardar=None):
-  """Uma sessão de exploração: anda pelo mapa até topar com algo.
+  """Uma sessão de exploração: anda pelo mapa do andar até pisar num ponto de
+  interesse (ou desistir com Esc).
 
   `ler_acao_batalha` e `aguardar` são repassados adiante (até dentro de uma
   eventual batalha) — sem isso, testes automatizados travariam esperando
@@ -53,25 +74,27 @@ def explorar(personagem, dungeon_id, *, escrever=None, leitor_tecla=None, limpar
 
   dungeon = DUNGEONS[dungeon_id]
   andar = dungeon.andares[personagem.andar_atual[dungeon_id] - 1]
+  mapa = MAPAS[dungeon_id][andar.numero]
+  posicao = _encontrar_entrada(mapa)
+  altura, largura = len(mapa), len(mapa[0])
 
-  posicao = [random.randint(0, TAMANHO_MAPA - 1), random.randint(0, TAMANHO_MAPA - 1)]
-  passos_ate_evento = random.randint(3, 6)
-  passos = 0
-
-  while passos < passos_ate_evento:
+  while True:
     limpar()
-    escrever(_desenhar_mapa(posicao, andar))
+    escrever(_desenhar_mapa(mapa, posicao, andar))
     tecla = leitor_tecla()
     if tecla == 'esc':
       return
     deslocamento = DESLOCAMENTOS.get(tecla)
     if deslocamento is None:
       continue
-    novo_y = max(0, min(TAMANHO_MAPA - 1, posicao[0] + deslocamento[0]))
-    novo_x = max(0, min(TAMANHO_MAPA - 1, posicao[1] + deslocamento[1]))
-    if [novo_y, novo_x] != posicao:
-      posicao = [novo_y, novo_x]
-      passos += 1
+    novo_y, novo_x = posicao[0] + deslocamento[0], posicao[1] + deslocamento[1]
+    if not (0 <= novo_y < altura and 0 <= novo_x < largura):
+      continue
+    if mapa[novo_y][novo_x] not in CELULAS_ANDAVEIS:
+      continue
+    posicao = [novo_y, novo_x]
+    if mapa[posicao[0]][posicao[1]] == '?':
+      break
 
   limpar()
   aplicar_desgaste_fome(personagem, escrever)

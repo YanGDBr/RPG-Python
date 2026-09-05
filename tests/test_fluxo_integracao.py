@@ -4,13 +4,15 @@ aceitam leitor/escritor injetáveis, dá pra simular um jogador de verdade sem
 precisar de um terminal interativo.
 """
 
-import itertools
 import random
+from collections import deque
 
 from rpg.dados.classes import CLASSES
+from rpg.dados.mapas import MAPAS
 from rpg.dados.monstros import MONSTROS
 from rpg.modelos.personagem import Personagem
 from rpg.sistemas import batalha, exploracao, loja, progressao
+from rpg.sistemas.exploracao import DESLOCAMENTOS, _encontrar_entrada
 
 
 def _leitor_menu_sequencia(sequencia):
@@ -42,6 +44,31 @@ def test_comprar_pocao_de_vida_debita_moedas_e_adiciona_ao_inventario():
   assert any('Vida' in m for m in mensagens)
 
 
+def _caminho_ate_ponto_de_interesse(mapa):
+  """Faz uma busca em largura da entrada até o '?' mais próximo e devolve a
+  sequência exata de direções pra chegar lá — o mapa agora tem paredes de
+  verdade, então não dá mais pra "andar em círculo" e confiar que vai
+  encontrar alguma coisa em algum momento."""
+  inicio = tuple(_encontrar_entrada(mapa))
+  visitados = {inicio}
+  fila = deque([(inicio, [])])
+  while fila:
+    (y, x), caminho = fila.popleft()
+    if mapa[y][x] == '?':
+      return caminho
+    for direcao, (dy, dx) in DESLOCAMENTOS.items():
+      ny, nx = y + dy, x + dx
+      if (ny, nx) in visitados:
+        continue
+      if not (0 <= ny < len(mapa) and 0 <= nx < len(mapa[0])):
+        continue
+      if mapa[ny][nx] not in ('.', '?', 'E'):
+        continue
+      visitados.add((ny, nx))
+      fila.append(((ny, nx), caminho + [direcao]))
+  raise AssertionError('nenhum ponto de interesse alcançável — mapa quebrado')
+
+
 def test_explorar_um_andar_e_lutar_ate_vencer():
   random.seed(99)
   personagem = _personagem_cavaleiro()
@@ -49,9 +76,12 @@ def test_explorar_um_andar_e_lutar_ate_vencer():
   personagem.andar_atual['habusken'] = 1
   mensagens = []
 
+  mapa = MAPAS['habusken'][1]
+  caminho = iter(_caminho_ate_ponto_de_interesse(mapa))
+
   exploracao.explorar(
       personagem, 'habusken', escrever=mensagens.append,
-      leitor_tecla=_leitor_tecla_ate_evento(),
+      leitor_tecla=lambda: next(caminho),
       limpar=lambda: None,
       ler_confirmacao=lambda *_a, **_k: True,
       ler_acao_batalha=lambda _titulo, _opcoes, **_kw: 0,  # sempre usa a 1ª habilidade
@@ -60,19 +90,7 @@ def test_explorar_um_andar_e_lutar_ate_vencer():
   # Não importa qual dos 3 eventos aconteceu (monstro, moedas ou nada) — o
   # personagem tem que continuar num estado consistente e sem exceções.
   assert personagem.vida >= 0
-  assert personagem.local in ('batalha', 'dungeon:habusken')
-
-
-def _leitor_tecla_ate_evento():
-  """Alterna entre as 4 direções — garante progresso mesmo se o personagem
-  nascer encostado numa borda/canto do mapa (uma única direção fixa poderia
-  travar o teste ali para sempre)."""
-  ciclo = itertools.cycle(['direita', 'baixo', 'esquerda', 'cima'])
-
-  def _ler():
-    return next(ciclo)
-
-  return _ler
+  assert personagem.fome == 9  # aplicar_desgaste_fome rodou (começa em 10)
 
 
 def test_vitoria_concede_recompensas_e_possivelmente_sobe_de_nivel():
