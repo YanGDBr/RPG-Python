@@ -10,7 +10,8 @@ automaticamente para qualquer monstro novo que a gente adicionar.
 import random
 from math import trunc
 
-from ..config import MAX_MISSOES_ATIVAS, QUANTIDADE_MISSOES_POR_QUADRO, REPUTACAO_TIERS
+from ..config import (MAX_MISSOES_ATIVAS, MULTIPLICADOR_EXP_GLOBAL,
+                       QUANTIDADE_MISSOES_POR_QUADRO, REPUTACAO_TIERS)
 from ..dados.dungeons import DUNGEONS
 from ..dados.monstros import MONSTROS
 
@@ -73,7 +74,8 @@ def gerar_missoes_do_andar(personagem, dungeon_id, andar_numero):
       'quadro_indice': indice_quadro,
       'monstro': nome_monstro,
       'quantidade_alvo': quantidade,
-      'recompensa_exp': trunc(quantidade * monstro.nivel * 2 * (1 + bonus_tier_percentual / 100)),
+      'recompensa_exp': trunc(quantidade * monstro.nivel * 2 * MULTIPLICADOR_EXP_GLOBAL
+                               * (1 + bonus_tier_percentual / 100)),
       'recompensa_moedas': trunc(quantidade * monstro.nivel * 3 * (1 + bonus_tier_percentual / 100)),
     })
   return missoes

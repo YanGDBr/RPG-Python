@@ -6,7 +6,8 @@ nada de função chamando a si mesma pra sempre feito o jogo original.
 import sys
 import time
 
-from .config import INTERVALO_AUTOSAVE_SEGUNDOS, Cor
+from . import persistencia
+from .config import DIRETORIO_BACKUPS, INTERVALO_AUTOSAVE_SEGUNDOS, Cor
 from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
 from .dados.especializacoes import NIVEL_MINIMO_ESPECIALIZACAO
@@ -19,7 +20,6 @@ from .interface import barra, cabecalho, limpar_tela, ljust_visivel
 from .modelos.personagem import Personagem
 from .persistencia import carregar_slots, salvar_slots
 from .sistemas import cidade, equipamento, exploracao, inventario, loja, mundo
-from .sistemas.progressao import tentar_reviver
 
 HISTORIA_QUEDA = """Você era policial civil numa cidade pequena do interior, Santa Rosa do Almeida — do tipo
 onde todo mundo conhece todo mundo. Seu último caso foi o sequestro de Bianca, uma menina de oito anos,
@@ -103,8 +103,52 @@ def _caixa_slot(indice, personagem):
 
 def _tela_selecionar_slot(slots):
   titulo = f'{cabecalho("RPG DE HABUSKEN")}\n\nEscolha um save slot:'
-  opcoes = [_caixa_slot(i, slots[i]) for i in range(len(slots))] + ['Sair do jogo']
+  opcoes = ([_caixa_slot(i, slots[i]) for i in range(len(slots))]
+            + ['Exportar Backup', 'Importar Backup', 'Sair do jogo'])
   return menu_padrao(titulo, opcoes, com_voltar=False)
+
+
+def _exportar_backup_ui():
+  limpar_tela()
+  try:
+    destino = persistencia.exportar_backup()
+    print(f'{Cor.VERDE}Backup criado com sucesso!{Cor.RESET}')
+    print(f'Local: {destino}')
+  except FileNotFoundError as erro:
+    print(f'{Cor.VERMELHO}{erro}{Cor.RESET}')
+  input('\nEnter para continuar...')
+
+
+def _importar_backup_ui(slots):
+  limpar_tela()
+  backups = persistencia.listar_backups()
+  if not backups:
+    print(f'{Cor.VERMELHO}Nenhum backup encontrado em {DIRETORIO_BACKUPS}.{Cor.RESET}')
+    input('\nEnter para continuar...')
+    return slots
+
+  escolha = menu_padrao(
+      'Escolha um backup para restaurar — isso substitui TODOS os slots atuais:',
+      [caminho.name for caminho in backups])
+  if escolha is None:
+    return slots
+
+  backup_escolhido = backups[escolha]
+  if not perguntar_sim_nao(f'Tem certeza? Isso substitui os saves atuais por "{backup_escolhido.name}".'):
+    return slots
+
+  try:
+    persistencia.importar_backup(backup_escolhido)
+  except (OSError, ValueError) as erro:
+    limpar_tela()
+    print(f'{Cor.VERMELHO}Erro ao importar: {erro}{Cor.RESET}')
+    input('\nEnter para continuar...')
+    return slots
+
+  limpar_tela()
+  print(f'{Cor.VERDE}Backup restaurado com sucesso!{Cor.RESET}')
+  input('\nEnter para continuar...')
+  return persistencia.carregar_slots()
 
 
 def _criar_personagem():
@@ -166,19 +210,11 @@ def _criar_personagem():
   return personagem
 
 
-def _aguardar_revive_se_necessario(personagem, slots):
-  while personagem.morto:
-    limpar_tela()
-    if tentar_reviver(personagem):
-      print(f'{Cor.VERDE}Você reviveu! Sua vida e mana foram restauradas.{Cor.RESET}')
-      input('Enter para continuar...')
-      return
-    escolha = menu_padrao(f'{Cor.VERMELHO}Você está morto. Aguarde 5 minutos para reviver.{Cor.RESET}',
-                           ['Tentar novamente', 'Salvar e sair do jogo'], com_voltar=False)
-    if escolha == 1:
-      salvar_slots(slots)
-      print('Dados salvos.')
-      sys.exit()
+def _processar_morte_se_necessario(personagem):
+  """A punição de morte (perder 1 nível, metade das moedas, voltar com pouca
+  vida/mana/fome) já foi aplicada na hora, dentro de `verificar_morte` — isso
+  só limpa o sinalizador antes de mostrar a próxima tela."""
+  personagem.morto = False
 
 
 _estado_autosave = {'ultimo': None}
@@ -255,7 +291,7 @@ def _tela_dungeon(personagem, dungeon_id, slots):
     if acao == 'Explorar':
       exploracao.explorar(personagem, dungeon_id)
       if personagem.morto:
-        _aguardar_revive_se_necessario(personagem, slots)
+        _processar_morte_se_necessario(personagem)
         return
     elif acao == 'Inventário':
       _tela_inventario(personagem)
@@ -314,7 +350,7 @@ def _tela_vila(personagem, slots):
   while True:
     _talvez_autosalvar(personagem, slots)
     if personagem.morto:
-      _aguardar_revive_se_necessario(personagem, slots)
+      _processar_morte_se_necessario(personagem)
 
     opcoes = ['Loja', 'Mestre de Habusken', 'Conversar com o Ancião', 'Dungeon de Habusken']
     if personagem.torre_arcana_liberada:
@@ -404,6 +440,12 @@ def iniciar():
     limpar_tela()
     escolha = _tela_selecionar_slot(slots)
     if escolha == len(slots):
+      _exportar_backup_ui()
+      continue
+    if escolha == len(slots) + 1:
+      slots = _importar_backup_ui(slots)
+      continue
+    if escolha == len(slots) + 2:
       print('Até a próxima!')
       return
     indice = escolha
@@ -428,5 +470,5 @@ def iniciar():
           print(f'{Cor.AMARELO}{nome_antigo} foi apagado.{Cor.RESET}')
           input('Enter para continuar...')
 
-  _aguardar_revive_se_necessario(personagem, slots)
+  _processar_morte_se_necessario(personagem)
   _tela_vila(personagem, slots)

@@ -7,7 +7,7 @@ elas a cada salvamento. Aqui é um objeto só.
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 @dataclass
@@ -80,7 +80,6 @@ class Personagem:
 
   local: str = 'inicio'
   morto: bool = False
-  momento_reviver: Optional[str] = None
 
   # Bônus temporários que só duram a batalha atual (resetados em `iniciar_batalha`).
   bonus_dano_batalha: int = 0

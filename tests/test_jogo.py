@@ -90,6 +90,66 @@ def test_autosalvar_dispara_apos_o_intervalo_configurado(monkeypatch):
   assert chamadas_salvar == [['s']]
 
 
+def test_exportar_backup_ui_mostra_local_quando_ha_save(monkeypatch, tmp_path):
+  monkeypatch.setattr(jogo, 'limpar_tela', lambda: None)
+  destino = tmp_path / 'backup_saves_20260101_000000.json'
+  monkeypatch.setattr(jogo.persistencia, 'exportar_backup', lambda: destino)
+  mensagens = []
+  monkeypatch.setattr('builtins.print', lambda *args, **_k: mensagens.append(' '.join(str(a) for a in args)))
+  monkeypatch.setattr('builtins.input', lambda *_a, **_k: '')
+
+  jogo._exportar_backup_ui()
+
+  assert any(str(destino) in m for m in mensagens)
+
+
+def test_exportar_backup_ui_sem_save_mostra_erro(monkeypatch):
+  monkeypatch.setattr(jogo, 'limpar_tela', lambda: None)
+
+  def _levanta():
+    raise FileNotFoundError('Nenhum save encontrado ainda.')
+
+  monkeypatch.setattr(jogo.persistencia, 'exportar_backup', _levanta)
+  mensagens = []
+  monkeypatch.setattr('builtins.print', lambda *args, **_k: mensagens.append(' '.join(str(a) for a in args)))
+  monkeypatch.setattr('builtins.input', lambda *_a, **_k: '')
+
+  jogo._exportar_backup_ui()  # não deve levantar — o erro é só mostrado
+
+  assert any('Nenhum save encontrado' in m for m in mensagens)
+
+
+def test_importar_backup_ui_sem_backups_devolve_slots_inalterados(monkeypatch):
+  monkeypatch.setattr(jogo, 'limpar_tela', lambda: None)
+  monkeypatch.setattr(jogo.persistencia, 'listar_backups', lambda: [])
+  monkeypatch.setattr('builtins.print', lambda *_a, **_k: None)
+  monkeypatch.setattr('builtins.input', lambda *_a, **_k: '')
+
+  slots_originais = [None, None, None]
+  resultado = jogo._importar_backup_ui(slots_originais)
+
+  assert resultado is slots_originais
+
+
+def test_importar_backup_ui_confirma_e_recarrega_slots(monkeypatch, tmp_path):
+  backup_falso = tmp_path / 'backup_saves_20260101_000000.json'
+  monkeypatch.setattr(jogo, 'limpar_tela', lambda: None)
+  monkeypatch.setattr(jogo, 'menu_padrao', lambda *_a, **_k: 0)  # escolhe o único backup listado
+  monkeypatch.setattr(jogo, 'perguntar_sim_nao', lambda *_a, **_k: True)
+  monkeypatch.setattr(jogo.persistencia, 'listar_backups', lambda: [backup_falso])
+  chamadas_importar = []
+  monkeypatch.setattr(jogo.persistencia, 'importar_backup', lambda origem: chamadas_importar.append(origem))
+  slots_novos = [Personagem(nome='Restaurado'), None, None]
+  monkeypatch.setattr(jogo.persistencia, 'carregar_slots', lambda: slots_novos)
+  monkeypatch.setattr('builtins.print', lambda *_a, **_k: None)
+  monkeypatch.setattr('builtins.input', lambda *_a, **_k: '')
+
+  resultado = jogo._importar_backup_ui([None, None, None])
+
+  assert chamadas_importar == [backup_falso]
+  assert resultado is slots_novos
+
+
 def test_entrar_cratera_bloqueado_antes_de_liberar():
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   mensagens = []

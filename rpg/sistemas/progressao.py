@@ -1,11 +1,10 @@
 """Recompensas de batalha, level-up e progresso de missão da guilda."""
 
 import random
-from datetime import datetime, timedelta
 from math import trunc
 
 from ..config import (BONUS_ELITE_RECOMPENSA_PERCENTUAL, FOME_CRITICA, FOME_MAXIMA,
-                       REPUTACAO_GANHA_POR_MISSAO, Cor)
+                       MULTIPLICADOR_EXP_GLOBAL, REPUTACAO_GANHA_POR_MISSAO, Cor)
 from ..dados.itens import ACESSORIOS_UNICOS, MATERIAIS
 from ..dados.racas import RACAS
 from . import equipamento
@@ -13,24 +12,26 @@ from .inventario import consumir_efeito_ativado
 
 
 def verificar_morte(personagem, escrever):
+  """Morrer não tem mais tempo de espera — a punição (perder 1 nível e
+  metade das moedas) é aplicada na hora, e o personagem já volta de pé,
+  com pouca vida/mana/fome, pra vila."""
   if personagem.vida > 0:
     return False
   personagem.morto = True
-  personagem.momento_reviver = (datetime.now() + timedelta(minutes=5)).isoformat()
-  escrever(f'{Cor.VERMELHO}Você morreu! Poderá reviver em 5 minutos.{Cor.RESET}')
+  personagem.nivel = max(1, personagem.nivel - 1)
+  personagem.exp = 0
+  personagem.exp_para_subir = personagem.nivel * 50
+  personagem.moeda_cobre //= 2
+  personagem.moeda_prata //= 2
+  personagem.moeda_ouro //= 2
+  personagem.vida = 10
+  personagem.mana = 10
+  personagem.fome = 1
+  personagem.efeitos_ativos.clear()
+  personagem.local = 'vila'
+  escrever(f'{Cor.VERMELHO}Você morreu! Perdeu 1 nível e metade das suas moedas, e voltou '
+           f'para a vila com pouca vida, mana e fome.{Cor.RESET}')
   return True
-
-
-def tentar_reviver(personagem):
-  if not personagem.morto or personagem.momento_reviver is None:
-    return False
-  if datetime.now() >= datetime.fromisoformat(personagem.momento_reviver):
-    personagem.morto = False
-    personagem.momento_reviver = None
-    personagem.vida = personagem.vida_maxima
-    personagem.mana = personagem.mana_maxima
-    return True
-  return False
 
 
 def aplicar_desgaste_fome(personagem, escrever):
@@ -46,7 +47,7 @@ def aplicar_desgaste_fome(personagem, escrever):
 
 
 def conceder_recompensas(personagem, monstro_base, escrever, elite=False):
-  exp = random.randint(monstro_base.exp_min, monstro_base.exp_max)
+  exp = trunc(random.randint(monstro_base.exp_min, monstro_base.exp_max) * MULTIPLICADOR_EXP_GLOBAL)
   moedas = random.randint(monstro_base.moedas_min, monstro_base.moedas_max)
 
   if elite:

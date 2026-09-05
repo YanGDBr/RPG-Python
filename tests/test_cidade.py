@@ -65,6 +65,28 @@ def test_mestre_habusken_apaga_a_tela_antes_de_pedir_a_sequencia():
   assert eventos[-2] == 'limpar'
 
 
+def test_mestre_habusken_conta_acertos_com_resposta_separada_por_espaco(monkeypatch):
+  """A resposta é digitada com `input()` de verdade (letras separadas por
+  espaço, ex. 'A B C D E'), nunca com o leitor de tecla de menu — então não
+  tem como o Espaço-como-Enter do menu interferir aqui."""
+  personagem = _personagem()
+  personagem.chefes_derrotados.append('Slime Gigante')
+  personagem.moeda_cobre = 50
+
+  letras_fixas = iter('ABCDE')
+  monkeypatch.setattr(cidade.random, 'choice', lambda _seq: next(letras_fixas))
+
+  respostas_menu = iter([0, 1])  # treinar, depois voltar
+
+  cidade.tela_mestre_habusken(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, _o, **_k: next(respostas_menu),
+      entrada_texto=lambda _p: 'A B C D E', esperar=lambda _s: None,
+      aguardar=lambda: None, limpar=lambda: None)
+
+  assert personagem.treinamento_habusken == 20  # 5 acertos x 4%
+
+
 def test_personagem_mostra_equipamento_atual_mesmo_sem_nada_pra_trocar():
   """Regressão: depois de equipar o único acessório guardado, a tela só
   mostrava um erro genérico ('nada pra trocar') sem nunca confirmar que o

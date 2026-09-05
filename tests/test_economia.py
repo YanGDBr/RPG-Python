@@ -1,5 +1,8 @@
 """Testes de regressão para o balanceamento das missões da guilda."""
 
+from math import trunc
+
+from rpg.config import MULTIPLICADOR_EXP_GLOBAL
 from rpg.dados.dungeons import DUNGEONS
 from rpg.dados.monstros import MONSTROS
 from rpg.modelos.personagem import Personagem
@@ -31,7 +34,8 @@ def test_recompensa_da_missao_escala_com_nivel_do_monstro():
   missoes = economia.gerar_missoes_do_andar(personagem, 'habusken', 1)
   for missao in missoes:
     monstro = MONSTROS[missao['monstro']]
-    assert missao['recompensa_exp'] == missao['quantidade_alvo'] * monstro.nivel * 2
+    assert missao['recompensa_exp'] == trunc(missao['quantidade_alvo'] * monstro.nivel * 2
+                                              * MULTIPLICADOR_EXP_GLOBAL)
     assert missao['recompensa_moedas'] == missao['quantidade_alvo'] * monstro.nivel * 3
 
 

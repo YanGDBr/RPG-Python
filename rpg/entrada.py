@@ -25,7 +25,7 @@ def _ler_tecla_windows():
     segundo = msvcrt.getch()
     mapa = {b'H': CIMA, b'P': BAIXO, b'K': ESQUERDA, b'M': DIREITA}
     return mapa.get(segundo, '')
-  if primeiro in (b'\r', b'\n'):
+  if primeiro in (b'\r', b'\n', b' '):
     return ENTER
   if primeiro == b'\x1b':
     return ESC
@@ -53,7 +53,7 @@ def _ler_tecla_unix():
         mapa = {'[A': CIMA, '[B': BAIXO, '[C': DIREITA, '[D': ESQUERDA}
         return mapa.get(resto, ESC)
       return ESC
-    if primeiro in ('\r', '\n'):
+    if primeiro in ('\r', '\n', ' '):
       return ENTER
     if primeiro == '\x03':
       raise KeyboardInterrupt

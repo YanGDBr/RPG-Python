@@ -34,6 +34,7 @@ def _diretorio_de_dados_do_usuario() -> Path:
 
 DIRETORIO_BASE = _diretorio_de_dados_do_usuario()
 ARQUIVO_SAVE = DIRETORIO_BASE / 'saves.json'
+DIRETORIO_BACKUPS = DIRETORIO_BASE / 'backups'
 NUMERO_DE_SLOTS = 3
 
 # Balanceamento
@@ -107,3 +108,7 @@ CUSTO_RENOVAR_QUADRO = 100
 # Auto-salvamento: silencioso, verificado nos loops principais (vila, dungeon,
 # mundo aberto) — não interrompe o jogador, só evita perder progresso.
 INTERVALO_AUTOSAVE_SEGUNDOS = 120
+
+# Multiplicador único de experiência — se aplica a tudo (monstro, missão da
+# guilda), pra deixar o nível subir mais rápido sem reescrever cada monstro.
+MULTIPLICADOR_EXP_GLOBAL = 2.0
