@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .venv/
 usuarios.pickle
+contas.json
+.pytest_cache/
