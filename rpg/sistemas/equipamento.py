@@ -8,7 +8,7 @@ tudo passa por estas funções, então nenhum bônus fica esquecido.
 
 from ..config import Cor
 from ..dados.classes import CLASSES
-from ..dados.itens import ACESSORIOS, ARMADURAS, ARMAS, ARMAS_LENDARIAS
+from ..dados.itens import ACESSORIOS, ACESSORIOS_UNICOS, ARMADURAS, ARMADURAS_UNICAS, ARMAS, ARMAS_LENDARIAS
 
 
 def resolver_arma(personagem):
@@ -24,18 +24,23 @@ def resolver_arma(personagem):
   return arma_inicial
 
 
+def bonus_poder_arma_efetivo(personagem):
+  """Bônus de poder da arma equipada + o que já foi encantado nela."""
+  return resolver_arma(personagem).bonus_poder_percentual + personagem.encantamento_arma
+
+
 def resolver_armadura(personagem):
-  return ARMADURAS.get(personagem.armadura_equipada)
+  return ARMADURAS.get(personagem.armadura_equipada) or ARMADURAS_UNICAS.get(personagem.armadura_equipada)
 
 
 def resolver_acessorio(personagem):
-  return ACESSORIOS.get(personagem.acessorio_equipado)
+  return ACESSORIOS.get(personagem.acessorio_equipado) or ACESSORIOS_UNICOS.get(personagem.acessorio_equipado)
 
 
 def vida_maxima_efetiva(personagem):
   base = personagem.vida_maxima
   armadura = resolver_armadura(personagem)
-  bonus_percentual = armadura.bonus_vida_percentual if armadura else 0
+  bonus_percentual = (armadura.bonus_vida_percentual if armadura else 0) + personagem.encantamento_armadura
   acessorio = resolver_acessorio(personagem)
   bonus_fixo = acessorio.valor if acessorio and acessorio.efeito == 'mana_vida' else 0
   return round(base + base * bonus_percentual / 100) + bonus_fixo
@@ -58,6 +63,31 @@ def chance_critico_extra_acessorio(personagem):
 def chance_boss_extra_acessorio(personagem):
   acessorio = resolver_acessorio(personagem)
   return acessorio.valor if acessorio and acessorio.efeito == 'boss' else 0
+
+
+def reducao_dano_acessorio(personagem):
+  acessorio = resolver_acessorio(personagem)
+  return acessorio.valor if acessorio and acessorio.efeito == 'reducao_dano' else 0
+
+
+def esquiva_flat_acessorio(personagem):
+  acessorio = resolver_acessorio(personagem)
+  return acessorio.valor if acessorio and acessorio.efeito == 'esquiva_flat' else 0
+
+
+def exp_extra_acessorio(personagem):
+  acessorio = resolver_acessorio(personagem)
+  return acessorio.valor if acessorio and acessorio.efeito == 'exp_extra' else 0
+
+
+def ouro_extra_acessorio(personagem):
+  acessorio = resolver_acessorio(personagem)
+  return acessorio.valor if acessorio and acessorio.efeito == 'ouro_extra' else 0
+
+
+def regeneracao_acessorio(personagem):
+  acessorio = resolver_acessorio(personagem)
+  return acessorio.valor if acessorio and acessorio.efeito == 'regeneracao' else 0
 
 
 def efeito_inicial_de_batalha_acessorio(personagem):

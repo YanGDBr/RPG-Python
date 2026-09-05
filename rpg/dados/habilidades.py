@@ -77,6 +77,34 @@ HABILIDADES = {
       acertos_min=6, acertos_max=10, bonus_critico=15, cooldown_max=4,
       nivel_minimo=25, preco=900,
       descricao='Uma saraivada mortal de flechas cobre todo o campo de batalha.'),
+
+  # ------------------------------------------- Especializações (nível 30+)
+  # Concedidas automaticamente ao escolher a especialização — não precisam
+  # ser compradas/desbloqueadas como as outras.
+  'Explosão Solar': Habilidade(
+      nome='Explosão Solar', mana=130, dano_base=200, tipo='ataque', elemento='Fogo',
+      efeito='Queimadura', turnos_efeito=3, cooldown_max=4,
+      descricao='Uma explosão solar avassaladora, marca do Piromante.'),
+  'Fúria Glacial': Habilidade(
+      nome='Fúria Glacial', mana=110, dano_base=170, tipo='ataque', elemento='Gelo',
+      efeito='Vulnerabilidade', turnos_efeito=3, cooldown_max=3,
+      descricao='Uma nevasca que fere e deixa o inimigo mais vulnerável, marca do Criomante.'),
+  'Julgamento': Habilidade(
+      nome='Julgamento', mana=100, dano_base=140, tipo='ataque', elemento='Fisico',
+      cura_percentual_usuario=15, efeito_no_usuario='Regeneração', turnos_efeito_no_usuario=3,
+      cooldown_max=3, descricao='Um golpe sagrado que fere o inimigo e cura o Paladino.'),
+  'Fúria Sanguinária': Habilidade(
+      nome='Fúria Sanguinária', mana=0, custo_furia=100, dano_base=260, tipo='ataque',
+      elemento='Fisico', cooldown_max=2,
+      descricao='Um golpe desesperado alimentado por toda a fúria acumulada em batalha.'),
+  'Tiro Certeiro': Habilidade(
+      nome='Tiro Certeiro', mana=60, dano_base=110, tipo='ataque', elemento='Fisico',
+      sempre_critico=True, cooldown_max=2,
+      descricao='Uma flecha certeira que sempre acerta em cheio, marca do Batedor.'),
+  'Tiro Perfurante': Habilidade(
+      nome='Tiro Perfurante', mana=90, dano_base=160, tipo='ataque', elemento='Fisico',
+      ignora_resistencia=True, cooldown_max=3,
+      descricao='Uma flecha que ignora qualquer resistência do inimigo.'),
 }
 
 

@@ -225,4 +225,94 @@ MONSTROS = {
       drops_item=(('Fragmento do Arquiteto', 1.0),),
       descricoes_ataque=('O Arquiteto revela as engrenagens ocultas por trás da existência das dungeons',
                           'O Arquiteto dobra o espaço ao seu redor e ataca de todas as direções')),
+
+  # =====================================================  Abismo Submerso — Andar 1
+  'Sereia Amaldiçoada': MonstroBase(
+      nome='Sereia Amaldiçoada', vida_maxima=650, ataque_min=140, ataque_max=160, nivel=51,
+      elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fogo',),
+      efeito_aplicado='Fraqueza', turnos_efeito_aplicado=2,
+      exp_min=170, exp_max=220, moedas_min=145, moedas_max=190,
+      descricoes_ataque=('A Sereia Amaldiçoada canta uma melodia que enfraquece sua vontade [Fraqueza]',
+                          'A Sereia Amaldiçoada te arranha com unhas afiadas como espinhos')),
+  'Caranguejo Gigante': MonstroBase(
+      nome='Caranguejo Gigante', vida_maxima=720, ataque_min=145, ataque_max=165, nivel=52,
+      elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fisico',),
+      exp_min=175, exp_max=225, moedas_min=150, moedas_max=195,
+      descricoes_ataque=('O Caranguejo Gigante te esmaga com sua pinça descomunal',
+                          'O Caranguejo Gigante avança de lado, quebrando tudo no caminho')),
+  'Enguia Elétrica': MonstroBase(
+      nome='Enguia Elétrica', vida_maxima=620, ataque_min=150, ataque_max=170, nivel=54,
+      elemento='Eletrico', fraquezas=('Fisico',), resistencias=('Eletrico', 'Agua'),
+      efeito_aplicado='Paralisia', turnos_efeito_aplicado=1,
+      exp_min=180, exp_max=230, moedas_min=155, moedas_max=200,
+      descricoes_ataque=('A Enguia Elétrica solta uma descarga que percorre a água [Paralisia]',
+                          'A Enguia Elétrica dá uma investida rápida e certeira')),
+  'Leviatã Menor': MonstroBase(
+      nome='Leviatã Menor', vida_maxima=1400, ataque_min=190, ataque_max=220, nivel=56,
+      elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fogo', 'Fisico'), chefe=True,
+      efeito_aplicado='Sangramento', turnos_efeito_aplicado=3,
+      exp_min=650, exp_max=850, moedas_min=550, moedas_max=750,
+      drops_item=(('Escama Abissal', 0.6),),
+      descricoes_ataque=('O Leviatã Menor ergue-se das profundezas e te golpeia com a cauda [Sangramento]',
+                          'O Leviatã Menor abre suas fauces e mergulha em sua direção')),
+
+  # =====================================================  Abismo Submerso — Andar 2
+  'Peixe-Abissal Luminescente': MonstroBase(
+      nome='Peixe-Abissal Luminescente', vida_maxima=780, ataque_min=160, ataque_max=180, nivel=58,
+      elemento='Agua', fraquezas=('Eletrico',), resistencias=('Sombrio',),
+      exp_min=190, exp_max=240, moedas_min=160, moedas_max=210,
+      drops_item=(('Pérola Negra', 0.2),),
+      descricoes_ataque=('O Peixe-Abissal ofusca você com sua luz própria antes de atacar',
+                          'O Peixe-Abissal morde com dentes translúcidos afiadíssimos')),
+  'Polvo Sombrio': MonstroBase(
+      nome='Polvo Sombrio', vida_maxima=820, ataque_min=165, ataque_max=185, nivel=60,
+      elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Fisico',),
+      efeito_aplicado='Veneno', turnos_efeito_aplicado=3,
+      exp_min=195, exp_max=245, moedas_min=165, moedas_max=215,
+      drops_item=(('Tinta de Kraken', 0.3),),
+      descricoes_ataque=('O Polvo Sombrio libera uma nuvem de tinta tóxica [Veneno]',
+                          'O Polvo Sombrio te envolve com seus tentáculos escuros')),
+  'Guardião de Coral': MonstroBase(
+      nome='Guardião de Coral', vida_maxima=900, ataque_min=170, ataque_max=190, nivel=62,
+      elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fisico',),
+      exp_min=200, exp_max=250, moedas_min=170, moedas_max=220,
+      descricoes_ataque=('O Guardião de Coral avança como uma muralha viva',
+                          'O Guardião de Coral dispara farpas de coral endurecido')),
+  'Rainha das Profundezas': MonstroBase(
+      nome='Rainha das Profundezas', vida_maxima=1700, ataque_min=220, ataque_max=250, nivel=65,
+      elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fogo', 'Fisico'), chefe=True,
+      efeito_aplicado='Paralisia', turnos_efeito_aplicado=1,
+      exp_min=750, exp_max=950, moedas_min=650, moedas_max=850,
+      drops_item=(('Pérola Negra', 1.0),),
+      descricoes_ataque=('A Rainha das Profundezas invoca uma corrente que te paralisa [Paralisia]',
+                          'A Rainha das Profundezas ataca com um tridente de coral negro')),
+
+  # =====================================================  Abismo Submerso — Andar 3
+  'Tentáculo Errante': MonstroBase(
+      nome='Tentáculo Errante', vida_maxima=950, ataque_min=190, ataque_max=210, nivel=66,
+      elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fisico',),
+      exp_min=210, exp_max=260, moedas_min=180, moedas_max=230,
+      descricoes_ataque=('Um Tentáculo Errante emerge do chão e te agarra',
+                          'Um Tentáculo Errante chicoteia a água ao seu redor')),
+  'Espectro Afogado': MonstroBase(
+      nome='Espectro Afogado', vida_maxima=1000, ataque_min=195, ataque_max=215, nivel=68,
+      elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio',),
+      efeito_aplicado='Vulnerabilidade', turnos_efeito_aplicado=2,
+      exp_min=215, exp_max=265, moedas_min=185, moedas_max=235,
+      descricoes_ataque=('O Espectro Afogado sussurra memórias de afogamento [Vulnerabilidade]',
+                          'O Espectro Afogado atravessa você com mãos geladas')),
+  'Golem de Coral Negro': MonstroBase(
+      nome='Golem de Coral Negro', vida_maxima=1100, ataque_min=200, ataque_max=220, nivel=70,
+      resistencias=('Fisico',), fraquezas=('Eletrico',),
+      exp_min=225, exp_max=275, moedas_min=190, moedas_max=240,
+      descricoes_ataque=('O Golem de Coral Negro desfere um golpe capaz de rachar rochas',
+                          'O Golem de Coral Negro avança arrastando fragmentos afiados')),
+  'Kraken Ancestral': MonstroBase(
+      nome='Kraken Ancestral', vida_maxima=2200, ataque_min=260, ataque_max=320, nivel=75,
+      elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fogo', 'Fisico', 'Sombrio'), chefe=True,
+      efeito_aplicado='Paralisia', turnos_efeito_aplicado=2,
+      exp_min=1200, exp_max=1500, moedas_min=1000, moedas_max=1400,
+      drops_item=(('Tinta de Kraken', 1.0), ('Escama Abissal', 0.8)),
+      descricoes_ataque=('O Kraken Ancestral emerge por completo, escurecendo o céu com sua sombra',
+                          'O Kraken Ancestral abate seus tentáculos ancestrais com força devastadora [Paralisia]')),
 }

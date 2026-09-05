@@ -1,7 +1,9 @@
 """Molde de monstro (dado estático) e a instância viva usada durante uma batalha."""
 
-from dataclasses import dataclass, field, replace
-from typing import Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+from ..config import MULTIPLICADOR_ELITE_VIDA
 
 
 @dataclass(frozen=True)
@@ -26,6 +28,11 @@ class MonstroBase:
   turnos_efeito_aplicado: int = 0
   chefe: bool = False
 
+  # IA leve: alguns monstros fogem com pouca vida, outros telegrafam um golpe
+  # forte um turno antes de desferi-lo.
+  foge_com_pouca_vida: bool = False
+  tem_investida_especial: bool = False
+
 
 @dataclass
 class MonstroBatalha:
@@ -34,14 +41,18 @@ class MonstroBatalha:
   base: MonstroBase
   vida: int
   efeitos_ativos: List[dict] = field(default_factory=list)
+  elite: bool = False
+  carregando_investida: bool = False
+  tentou_fugir: bool = False
 
   @classmethod
-  def instanciar(cls, base: MonstroBase) -> 'MonstroBatalha':
-    return cls(base=base, vida=base.vida_maxima)
+  def instanciar(cls, base: MonstroBase, elite: bool = False) -> 'MonstroBatalha':
+    vida = round(base.vida_maxima * MULTIPLICADOR_ELITE_VIDA) if elite else base.vida_maxima
+    return cls(base=base, vida=vida, elite=elite)
 
   @property
   def nome(self) -> str:
-    return self.base.nome
+    return f'{"Elite " if self.elite else ""}{self.base.nome}'
 
   @property
   def vivo(self) -> bool:

@@ -109,4 +109,13 @@ MAPAS = {
                                pontos_relativos=[(-9, 0), (9, 0), (0, -16), (0, 16),
                                                   (-7, -11), (7, 11), (-7, 11), (7, -11)]),
   },
+  'abismo_submerso': {
+    1: _construir_mapa_pente(33, 11, ramos=[4, 9, 14, 19, 24, 29],
+                              parede='~', entrada_coluna=1),
+    2: _construir_mapa_grade(35, 13, linha_superior=3, linha_inferior=9,
+                               ligacoes=[7, 17, 27], parede='=', entrada_coluna=17),
+    3: _construir_mapa_salao(41, 19, raio_sala=8, parede=':',
+                               pontos_relativos=[(-9, 0), (9, 0), (0, -17), (0, 17),
+                                                  (-7, -12), (7, 12), (-7, 12), (7, -12)]),
+  },
 }

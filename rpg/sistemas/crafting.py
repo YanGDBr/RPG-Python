@@ -1,8 +1,9 @@
 """Bancada de trabalho: materiais dropados por monstros viram poções e, com
-material dos dois chefes finais, a arma lendária da classe do jogador."""
+material dos chefes finais, a arma lendária da classe do jogador e a
+armadura abissal."""
 
 from ..config import Cor
-from ..dados.itens import ARMAS_LENDARIAS
+from ..dados.itens import ARMADURAS_UNICAS, ARMAS_LENDARIAS
 
 
 def craftar(personagem, receita, escrever):
@@ -25,5 +26,9 @@ def craftar(personagem, receita, escrever):
     arma = ARMAS_LENDARIAS[receita.resultado_nome]
     personagem.equipamentos_guardados.append(arma.nome)
     escrever(f'{Cor.VERDE}Você forjou {arma.nome}! Equipe-a em Personagem.{Cor.RESET}')
+  elif receita.resultado_tipo == 'armadura_unica':
+    armadura = ARMADURAS_UNICAS[receita.resultado_nome]
+    personagem.armaduras_guardadas.append(armadura.nome)
+    escrever(f'{Cor.VERDE}Você forjou {armadura.nome}! Equipe-a em Personagem.{Cor.RESET}')
 
   return True

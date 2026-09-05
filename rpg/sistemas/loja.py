@@ -3,13 +3,17 @@ pagamento — no original cada categoria de loja tinha seu próprio bloco de
 código quase idêntico, com preços que às vezes nem batiam com o texto exibido.
 """
 
-from ..config import Cor
+import random
+from datetime import date
+
+from ..config import DESCONTO_OFERTA_DIA, QUANTIDADE_OFERTAS_DIA, Cor
 from ..dados.itens import PRECO_COMIDA
 from ..dados.lojas import (CATALOGO_ACESSORIOS, CATALOGO_ARMADURAS,
                             CATALOGO_ITENS_CONSUMIVEIS, CATALOGO_POCOES,
                             COMIDAS_VENDIDAS, armas_disponiveis_para_classe)
 from ..entrada import aguardar_leitura
 from ..entrada import menu as menu_padrao
+from ..modelos.item import Acessorio, ItemConsumivel, Pocao
 from . import equipamento
 
 
@@ -94,6 +98,49 @@ def loja_itens(personagem, escrever=print, ler_acao=None, aguardar=None):
       if _pagar(personagem, PRECO_COMIDA, escrever):
         personagem.comidas[nome_comida] = personagem.comidas.get(nome_comida, 0) + 1
         escrever(f'{Cor.VERDE}Você comprou {nome_comida}.{Cor.RESET}')
+    aguardar()
+
+
+def _ofertas_do_dia():
+  pool = list(CATALOGO_POCOES) + list(CATALOGO_ITENS_CONSUMIVEIS) + list(CATALOGO_ACESSORIOS)
+  gerador = random.Random(date.today().toordinal())
+  return gerador.sample(pool, k=min(QUANTIDADE_OFERTAS_DIA, len(pool)))
+
+
+def _preco_com_desconto(preco):
+  return max(1, round(preco * (1 - DESCONTO_OFERTA_DIA / 100)))
+
+
+def loja_ofertas_do_dia(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  ofertas = _ofertas_do_dia()
+  while True:
+    opcoes = [f'{item.nome} — {Cor.CINZA}{item.preco}{Cor.RESET} '
+              f'{Cor.VERDE}{_preco_com_desconto(item.preco)} cobres{Cor.RESET} '
+              f'({DESCONTO_OFERTA_DIA}% off)' for item in ofertas]
+    titulo = _titulo(personagem, f'Ofertas do Dia ({date.today().isoformat()})')
+    escolha = ler_acao(titulo, opcoes)
+    if escolha is None:
+      return
+    item = ofertas[escolha]
+    preco_final = _preco_com_desconto(item.preco)
+    if isinstance(item, Acessorio):
+      if item.nome in personagem.acessorios_guardados or personagem.acessorio_equipado == item.nome:
+        escrever(f'{Cor.AMARELO}Você já tem esse acessório.{Cor.RESET}')
+        aguardar()
+        continue
+      if _pagar(personagem, preco_final, escrever):
+        personagem.acessorios_guardados.append(item.nome)
+        escrever(f'{Cor.VERDE}Você comprou {item.nome}. Equipe-o em Personagem.{Cor.RESET}')
+    elif isinstance(item, Pocao):
+      if _pagar(personagem, preco_final, escrever):
+        personagem.pocoes[item.nome] = personagem.pocoes.get(item.nome, 0) + 1
+        escrever(f'{Cor.VERDE}Você comprou uma Poção de {item.nome}.{Cor.RESET}')
+    elif isinstance(item, ItemConsumivel):
+      if _pagar(personagem, preco_final, escrever):
+        personagem.adicionar_item(item.nome)
+        escrever(f'{Cor.VERDE}Você comprou {item.nome}.{Cor.RESET}')
     aguardar()
 
 

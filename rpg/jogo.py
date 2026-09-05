@@ -8,6 +8,7 @@ import sys
 from .config import Cor
 from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
+from .dados.especializacoes import NIVEL_MINIMO_ESPECIALIZACAO
 from .dados.racas import RACAS
 from .entrada import menu as menu_padrao
 from .entrada import pedir_texto, perguntar_sim_nao
@@ -27,6 +28,15 @@ e habilidades, para que aproveitasse a vida do jeito que quisesse. Nesse mundo e
 Você acorda em um corpo adulto, numa casa simples, com uma mochila contendo 100 cobres, um pouco
 de comida e documentos de identidade. Decide se tornar um aventureiro e desvendar o mistério das dungeons.
 """
+
+EPILOGO = """Com o Kraken Ancestral derrotado, as águas do Abismo Submerso finalmente se aquietam. Entre os
+destroços flutuantes, você entende: O Arquiteto não criou as dungeons por acaso — elas eram um teste, uma
+peneira para separar quem seria digno de herdar o que restou de um mundo antigo. Você não sabe se essa
+resposta é um fim ou um começo, mas sabe que sobreviveu a tudo que esse mundo pôde jogar contra você.
+
+A história que te trouxe até aqui, de um policial que caiu de um prédio, termina como uma lenda entre os
+aventureiros de Habusken. A sua jornada, porém, continua — sempre há mais uma dungeon, mais um mistério,
+mais um andar abaixo do último."""
 
 _ICONE_CLASSE = {'Mago': '(*)', 'Cavaleiro': '[X]', 'Arqueiro': '}=>'}
 _LARGURA_CAIXA = 50
@@ -85,6 +95,12 @@ def _criar_personagem():
     raca = RACAS[personagem.raca]
     if raca.bonus_tipo == 'esquiva':
       personagem.esquiva += raca.valor
+    elif raca.bonus_tipo == 'vida':
+      personagem.vida_maxima = round(personagem.vida_maxima * (1 + raca.valor / 100))
+      personagem.vida = personagem.vida_maxima
+    if raca.contrapartida_tipo == 'mana':
+      personagem.mana_maxima = round(personagem.mana_maxima * (1 - raca.contrapartida_valor / 100))
+      personagem.mana = personagem.mana_maxima
     break
 
   nomes_classes = list(CLASSES.keys())
@@ -142,9 +158,11 @@ def _tela_inventario(personagem):
 
 
 def _tela_loja(personagem):
-  ecrans = [loja.loja_itens, loja.loja_pocoes, loja.loja_equipamentos, loja.loja_armaduras]
+  ecrans = [loja.loja_itens, loja.loja_pocoes, loja.loja_equipamentos, loja.loja_armaduras,
+            loja.loja_ofertas_do_dia]
   while True:
-    opcoes = ['Itens/Acessórios/Comida', 'Poções', 'Equipamentos', 'Armaduras']
+    opcoes = ['Itens/Acessórios/Comida', 'Poções', 'Equipamentos', 'Armaduras',
+              f'{Cor.AMARELO}Ofertas do Dia{Cor.RESET}']
     escolha = menu_padrao(f'{equipamento.resumo_status(personagem)}\n\nLoja', opcoes)
     if escolha is None:
       return
@@ -194,9 +212,13 @@ def _tela_vila(personagem, slots):
     opcoes = ['Loja', 'Mestre de Habusken', 'Dungeon de Habusken']
     if personagem.torre_arcana_liberada:
       opcoes.append('Torre Arcana')
+    if personagem.abismo_submerso_liberado:
+      opcoes.append('Abismo Submerso')
     opcoes += ['Personagem', 'Casa', 'Desbloquear Habilidades', 'Status',
-               'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho',
-               'Salvar Dados', 'Salvar e Sair']
+               'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho', 'Ferreiro']
+    if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
+      opcoes.append('Especialização')
+    opcoes += ['Estatísticas', 'Mapa de Progresso', 'Salvar Dados', 'Salvar e Sair']
 
     cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
     titulo = (f'{Cor.BRANCO}Vila Habusken — {personagem.nome}{Cor.RESET}\n'
@@ -215,6 +237,15 @@ def _tela_vila(personagem, slots):
         personagem.torre_arcana_liberada = True
     elif acao == 'Torre Arcana':
       _tela_dungeon(personagem, 'torre_arcana', slots)
+      if 'O Arquiteto' in personagem.chefes_derrotados:
+        personagem.abismo_submerso_liberado = True
+    elif acao == 'Abismo Submerso':
+      _tela_dungeon(personagem, 'abismo_submerso', slots)
+      if 'Kraken Ancestral' in personagem.chefes_derrotados and not personagem.historia_concluida:
+        personagem.historia_concluida = True
+        limpar_tela()
+        print(EPILOGO)
+        input('\nAperte Enter para continuar...')
     elif acao == 'Personagem':
       cidade.tela_personagem(personagem)
     elif acao == 'Casa':
@@ -231,6 +262,14 @@ def _tela_vila(personagem, slots):
       cidade.tela_bau(personagem)
     elif acao == 'Bancada de Trabalho':
       cidade.tela_crafting(personagem)
+    elif acao == 'Ferreiro':
+      cidade.tela_ferreiro(personagem)
+    elif acao == 'Especialização':
+      cidade.tela_especializacao(personagem)
+    elif acao == 'Estatísticas':
+      cidade.tela_estatisticas(personagem)
+    elif acao == 'Mapa de Progresso':
+      cidade.tela_mapa_progresso(personagem)
     elif acao == 'Salvar Dados':
       salvar_slots(slots)
       print(f'{Cor.VERDE}Dados salvos com sucesso!{Cor.RESET}')

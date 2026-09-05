@@ -35,6 +35,12 @@ ARMADURAS = {
                                    bonus_vida_percentual=40, bonus_mana_percentual=20, preco=800),
 }
 
+# Só obtida via crafting, com material do Abismo Submerso — ver receitas.py.
+ARMADURAS_UNICAS = {
+  'Armadura Abissal': Armadura('Armadura Abissal', '50% a mais de vida e 30% a mais de mana',
+                                 bonus_vida_percentual=50, bonus_mana_percentual=30),
+}
+
 # ---------------------------------------------------------------- Acessórios
 ACESSORIOS = {
   'Colar do Labirinto': Acessorio(
@@ -45,6 +51,34 @@ ACESSORIOS = {
       'Anel de Fogo', 'O inimigo começa a batalha em Queimadura por 3 turnos', 'queimadura_inicial', 3, preco=130),
   'Bracelete da Sorte': Acessorio(
       'Bracelete da Sorte', 'Aumenta a chance de crítico em 10%', 'critico', 10, preco=150),
+}
+
+# Acessórios únicos — só obtidos derrotando o chefe correspondente, não são
+# vendidos em loja nenhuma. Cada chefe (menos os dois finais, que já davam
+# material de crafting) ganhou um efeito próprio pra ficar mais memorável.
+ACESSORIOS_UNICOS = {
+  'Slime Gigante': Acessorio(
+      'Núcleo Gelatinoso', 'Regenera 3% da vida máxima por turno em batalha', 'regeneracao', 3),
+  'Goblin Xamã': Acessorio(
+      'Cajado do Xamã', 'Aumenta a experiência ganha em 15%', 'exp_extra', 15),
+  'Orc Chefe': Acessorio(
+      'Presa do Orc Chefe', 'Reduz o dano recebido em 10%', 'reducao_dano', 10),
+  'Cavaleiro da Morte': Acessorio(
+      'Elmo do Cavaleiro Sombrio', 'Aumenta a esquiva em 8 pontos', 'esquiva_flat', 8),
+  'Dragão Ancião de Habusken': Acessorio(
+      'Escama do Dragão Ancião', 'Reduz o dano recebido em 15%', 'reducao_dano', 15),
+  'Arquimago Renegado': Acessorio(
+      'Anel do Arquimago', 'Aumenta a chance de crítico em 15%', 'critico', 15),
+  'Guardiã da Torre': Acessorio(
+      'Coroa Congelante', 'Regenera 5% da vida máxima por turno em batalha', 'regeneracao', 5),
+  'O Arquiteto': Acessorio(
+      'Olho do Arquiteto', 'Aumenta a experiência ganha em 30%', 'exp_extra', 30),
+  'Leviatã Menor': Acessorio(
+      'Escama do Leviatã', 'Reduz o dano recebido em 12%', 'reducao_dano', 12),
+  'Rainha das Profundezas': Acessorio(
+      'Tridente da Rainha', 'Aumenta a chance de crítico em 12%', 'critico', 12),
+  'Kraken Ancestral': Acessorio(
+      'Coração do Kraken', 'Aumenta as moedas ganhas em 25%', 'ouro_extra', 25),
 }
 
 # -------------------------------------------------------------------- Poções
@@ -82,4 +116,7 @@ MATERIAIS = {
   'Cristal Arcano': Material('Cristal Arcano', 'Cristal imbuído de energia mágica.'),
   'Núcleo do Dragão Ancião': Material('Núcleo do Dragão Ancião', 'Coração cristalizado do Dragão Ancião de Habusken.'),
   'Fragmento do Arquiteto': Material('Fragmento do Arquiteto', 'Um fragmento do ser que construiu a Torre Arcana.'),
+  'Escama Abissal': Material('Escama Abissal', 'Escama de uma criatura das profundezas.'),
+  'Pérola Negra': Material('Pérola Negra', 'Pérola rara encontrada no Abismo Submerso.'),
+  'Tinta de Kraken': Material('Tinta de Kraken', 'Tinta escura e viscosa do Kraken Ancestral.'),
 }

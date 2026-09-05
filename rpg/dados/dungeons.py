@@ -55,4 +55,16 @@ DUNGEONS = {
         Andar(3, 'Núcleo da Torre', 'Recomendado para níveis 40+',
               ['Homúnculo', 'Golem Arcano', 'Espectro do Vazio'], 'O Arquiteto'),
       ]),
+  'abismo_submerso': Dungeon(
+      id='abismo_submerso',
+      nome='Abismo Submerso',
+      requer_chefe_derrotado='O Arquiteto',
+      andares=[
+        Andar(1, 'Recifes Afogados', 'Recomendado para níveis 50+',
+              ['Sereia Amaldiçoada', 'Caranguejo Gigante', 'Enguia Elétrica'], 'Leviatã Menor'),
+        Andar(2, 'Fossa Abissal', 'Recomendado para níveis 58+',
+              ['Peixe-Abissal Luminescente', 'Polvo Sombrio', 'Guardião de Coral'], 'Rainha das Profundezas'),
+        Andar(3, 'Trono do Kraken', 'Recomendado para níveis 65+',
+              ['Tentáculo Errante', 'Espectro Afogado', 'Golem de Coral Negro'], 'Kraken Ancestral'),
+      ]),
 }

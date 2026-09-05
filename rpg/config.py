@@ -51,3 +51,49 @@ FOME_CRITICA = 3
 PODER_DANO_PERCENTUAL_POR_PONTO = 2
 BONUS_ETEN_PERCENTUAL = 15
 LIMITE_DEBUFF_PERCENTUAL = 80     # bônus percentual nunca deixa o dano cair abaixo de 20% do base
+
+# Roda elemental genérica: cada elemento é forte contra o próximo da lista e
+# fraco contra o anterior — só entra em jogo quando o monstro NÃO já tem uma
+# fraqueza/resistência explícita pro elemento do ataque (essas continuam
+# valendo mais, com o multiplicador maior de cima).
+CICLO_ELEMENTAL = ['Fisico', 'Fogo', 'Gelo', 'Eletrico', 'Agua', 'Sombrio']
+MULTIPLICADOR_FRAQUEZA_CICLO = 1.25
+MULTIPLICADOR_RESISTENCIA_CICLO = 0.8
+
+# Monstro elite: variante mais forte de um monstro comum, sorteada na exploração.
+CHANCE_MONSTRO_ELITE = 15          # 1 em N encontros de monstro comum vira elite
+MULTIPLICADOR_ELITE_VIDA = 1.8
+MULTIPLICADOR_ELITE_ATAQUE = 1.4
+BONUS_ELITE_RECOMPENSA_PERCENTUAL = 100   # dobra exp/moedas e garante 1 drop extra
+
+# Recurso de Fúria do Cavaleiro.
+FURIA_CAVALEIRO_MAXIMA = 100
+FURIA_GANHA_AO_ATACAR = 10
+FURIA_GANHA_AO_LEVAR_DANO = 15
+
+# Postura de combate.
+BONUS_POSTURA_OFENSIVA_DANO = 10           # % a mais de dano causado
+BONUS_POSTURA_OFENSIVA_DANO_RECEBIDO = 10  # % a mais de dano recebido
+BONUS_POSTURA_DEFENSIVA_DANO = -10         # % a menos de dano causado (negativo)
+BONUS_POSTURA_DEFENSIVA_REDUCAO = 15       # % a menos de dano recebido
+
+# Reputação da guilda e encantamento de equipamento.
+REPUTACAO_GANHA_POR_MISSAO = 10
+ENCANTAMENTO_INCREMENTO = 3
+ENCANTAMENTO_MAXIMO_ARMA = 30
+ENCANTAMENTO_MAXIMO_ARMADURA = 20
+ENCANTAMENTO_CUSTO_PRATA_BASE = 5   # multiplicado pelo tier atual — cada encantamento fica mais caro
+ENCANTAMENTO_MATERIAL = 'Cristal Arcano'
+
+# Loja rotativa: ofertas do dia, sorteadas com seed na data — todo mundo vê a
+# mesma oferta no mesmo dia, e ela muda sozinha à meia-noite.
+DESCONTO_OFERTA_DIA = 30
+QUANTIDADE_OFERTAS_DIA = 3
+
+# Autobatalha: joga sozinho por N turnos usando sempre a habilidade disponível
+# de maior dano previsto, cancelando cedo se a vida ficar baixa demais.
+AUTOBATALHA_TURNOS = 5
+AUTOBATALHA_VIDA_MINIMA_PERCENTUAL = 30
+
+# Reputação da guilda: cada tier libera missões melhores.
+REPUTACAO_TIERS = [(0, 'Novato'), (100, 'Experiente'), (300, 'Veterano'), (600, 'Lendário')]

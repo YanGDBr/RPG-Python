@@ -5,6 +5,7 @@ carregada em memória) e uma função de 30 linhas copiando campo por campo entr
 elas a cada salvamento. Aqui é um objeto só.
 """
 
+import datetime
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -59,8 +60,9 @@ class Personagem:
 
   chefes_derrotados: List[str] = field(default_factory=list)
   andar_atual: Dict[str, int] = field(
-      default_factory=lambda: {'habusken': 1, 'torre_arcana': 1})
+      default_factory=lambda: {'habusken': 1, 'torre_arcana': 1, 'abismo_submerso': 1})
   torre_arcana_liberada: bool = False
+  abismo_submerso_liberado: bool = False
 
   missao_monstro: str = ''
   missao_quantidade_alvo: int = 0
@@ -82,6 +84,25 @@ class Personagem:
   pocao_poder_usada: bool = False
   pocao_esquiva_usada: bool = False
   pocao_furia_usada: bool = False
+
+  # Especialização (nível 30+) e o recurso de Fúria, exclusivo do Cavaleiro.
+  especializacao: str = ''
+  furia_cavaleiro: int = 0
+
+  # Postura de combate: 'ofensiva' (mais dano, mais dano recebido) ou 'defensiva'.
+  postura: str = 'ofensiva'
+
+  # Reputação da guilda (sobe ao completar missão) e progresso pra encantamento.
+  reputacao_guilda: int = 0
+  encantamento_arma: int = 0
+  encantamento_armadura: int = 0
+
+  # Estatísticas cumulativas (tela de Estatísticas) e marcos de história.
+  monstros_derrotados: int = 0
+  moedas_totais_ganhas: int = 0
+  missoes_completadas: int = 0
+  historia_concluida: bool = False
+  data_criacao: str = field(default_factory=lambda: datetime.date.today().isoformat())
 
   def vida_percentual(self) -> float:
     return 0.0 if self.vida_maxima <= 0 else self.vida / self.vida_maxima
@@ -107,3 +128,11 @@ class Personagem:
 
   def adicionar_material(self, nome: str, quantidade: int = 1):
     self.materiais[nome] = self.materiais.get(nome, 0) + quantidade
+
+  def remover_material(self, nome: str, quantidade: int = 1) -> bool:
+    if self.materiais.get(nome, 0) < quantidade:
+      return False
+    self.materiais[nome] -= quantidade
+    if self.materiais[nome] <= 0:
+      del self.materiais[nome]
+    return True

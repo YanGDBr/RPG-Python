@@ -4,7 +4,12 @@ import random
 import string
 import time
 
-from ..config import BONUS_ETEN_PERCENTUAL, Cor
+from ..config import (BONUS_ETEN_PERCENTUAL, ENCANTAMENTO_CUSTO_PRATA_BASE,
+                       ENCANTAMENTO_INCREMENTO, ENCANTAMENTO_MATERIAL,
+                       ENCANTAMENTO_MAXIMO_ARMADURA, ENCANTAMENTO_MAXIMO_ARMA,
+                       REPUTACAO_TIERS, Cor)
+from ..dados.especializacoes import (ESPECIALIZACOES, ESPECIALIZACOES_POR_CLASSE,
+                                      NIVEL_MINIMO_ESPECIALIZACAO)
 from ..dados.habilidades import HABILIDADES, HABILIDADES_DESBLOQUEAVEIS
 from ..dados.receitas import RECEITAS
 from ..entrada import aguardar_leitura
@@ -215,7 +220,9 @@ def tela_guilda(personagem, escrever=print, ler_acao=None, aguardar=None, _misso
     if personagem.missao_monstro:
       opcoes.append(f'Abandonar missão atual ({personagem.missao_monstro})')
 
-    titulo = f'{equipamento.resumo_status(personagem)}\n\n{Cor.ROSA}Guilda{Cor.RESET}'
+    _, nome_tier = economia.tier_reputacao(personagem.reputacao_guilda)
+    titulo = (f'{equipamento.resumo_status(personagem)}\n\n{Cor.ROSA}Guilda{Cor.RESET}\n'
+              f'Reputação: {personagem.reputacao_guilda} ({Cor.AMARELO}{nome_tier}{Cor.RESET})')
     if personagem.missao_monstro:
       titulo += (f'\nMissão ativa: matar {personagem.missao_monstro} '
                  f'({personagem.missao_quantidade_atual}/{personagem.missao_quantidade_alvo})')
@@ -275,6 +282,113 @@ def tela_desbloquear_habilidades(personagem, escrever=print, ler_acao=None, agua
     personagem.habilidades_aprendidas.append(nome)
     escrever(f'{Cor.VERDE}Você aprendeu {nome}! Equipe-a em Status -> Equipar Habilidades.{Cor.RESET}')
     aguardar()
+
+
+def tela_especializacao(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  if personagem.especializacao:
+    escrever(f'{Cor.CIANO}Você já é um(a) {personagem.especializacao}. A escolha é permanente.{Cor.RESET}')
+    aguardar()
+    return
+  if personagem.nivel < NIVEL_MINIMO_ESPECIALIZACAO:
+    escrever(f'{Cor.VERMELHO}Você precisa ser nível {NIVEL_MINIMO_ESPECIALIZACAO} para se '
+             f'especializar.{Cor.RESET}')
+    aguardar()
+    return
+  nomes = ESPECIALIZACOES_POR_CLASSE.get(personagem.classe, [])
+  opcoes = [f'{Cor.BRANCO}{nome}{Cor.RESET} — {ESPECIALIZACOES[nome].descricao}' for nome in nomes]
+  escolha = ler_acao(_titulo(personagem, 'Escolha sua especialização (permanente)'), opcoes)
+  if escolha is None:
+    return
+  especializacao = ESPECIALIZACOES[nomes[escolha]]
+  personagem.especializacao = especializacao.nome
+  if especializacao.bonus_tipo == 'vida_maxima':
+    personagem.vida_maxima = round(personagem.vida_maxima * (1 + especializacao.bonus_valor / 100))
+    personagem.vida = personagem.vida_maxima
+  elif especializacao.bonus_tipo == 'esquiva_flat':
+    personagem.esquiva += especializacao.bonus_valor
+  personagem.habilidades_aprendidas.append(especializacao.habilidade_nova)
+  escrever(f'{Cor.VERDE}Você se tornou um(a) {especializacao.nome}! Aprendeu '
+           f'{especializacao.habilidade_nova}.{Cor.RESET}')
+  aguardar()
+
+
+def tela_ferreiro(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  while True:
+    tem_arma = bool(personagem.arma_equipada)
+    tem_armadura = bool(personagem.armadura_equipada)
+    opcoes = []
+    if tem_arma and personagem.encantamento_arma < ENCANTAMENTO_MAXIMO_ARMA:
+      custo = ENCANTAMENTO_CUSTO_PRATA_BASE * (personagem.encantamento_arma // ENCANTAMENTO_INCREMENTO + 1)
+      opcoes.append(f'Encantar arma (+{ENCANTAMENTO_INCREMENTO}%, atual +{personagem.encantamento_arma}%) '
+                    f'— {custo} pratas + 1x {ENCANTAMENTO_MATERIAL}')
+    if tem_armadura and personagem.encantamento_armadura < ENCANTAMENTO_MAXIMO_ARMADURA:
+      custo = ENCANTAMENTO_CUSTO_PRATA_BASE * (personagem.encantamento_armadura // ENCANTAMENTO_INCREMENTO + 1)
+      opcoes.append(f'Encantar armadura (+{ENCANTAMENTO_INCREMENTO}%, atual '
+                    f'+{personagem.encantamento_armadura}%) — {custo} pratas + 1x {ENCANTAMENTO_MATERIAL}')
+    if not opcoes:
+      escrever(f'{Cor.CIANO}Nada para encantar agora (equipe uma arma/armadura, ou já está no '
+               f'máximo).{Cor.RESET}')
+      aguardar()
+      return
+    escolha = ler_acao(_titulo(personagem, 'Ferreiro — Encantamento'), opcoes)
+    if escolha is None:
+      return
+    alvo_arma = tem_arma and personagem.encantamento_arma < ENCANTAMENTO_MAXIMO_ARMA and escolha == 0
+    custo = (ENCANTAMENTO_CUSTO_PRATA_BASE
+             * ((personagem.encantamento_arma if alvo_arma else personagem.encantamento_armadura)
+                // ENCANTAMENTO_INCREMENTO + 1))
+    if personagem.moeda_prata < custo:
+      escrever(f'{Cor.VERMELHO}Você não tem pratas suficientes.{Cor.RESET}')
+      aguardar()
+      continue
+    if not personagem.remover_material(ENCANTAMENTO_MATERIAL):
+      escrever(f'{Cor.VERMELHO}Você não tem {ENCANTAMENTO_MATERIAL} suficiente.{Cor.RESET}')
+      aguardar()
+      continue
+    personagem.moeda_prata -= custo
+    if alvo_arma:
+      personagem.encantamento_arma += ENCANTAMENTO_INCREMENTO
+    else:
+      personagem.encantamento_armadura += ENCANTAMENTO_INCREMENTO
+    escrever(f'{Cor.VERDE}Encantamento aplicado com sucesso!{Cor.RESET}')
+    aguardar()
+
+
+def tela_estatisticas(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  titulo = (f'{Cor.BRANCO}Estatísticas de {personagem.nome}{Cor.RESET}\n\n'
+            f'Nível: {personagem.nivel}\n'
+            f'Especialização: {personagem.especializacao or "Nenhuma"}\n'
+            f'Monstros derrotados: {personagem.monstros_derrotados}\n'
+            f'Chefes derrotados: {len(personagem.chefes_derrotados)}\n'
+            f'Missões completadas: {personagem.missoes_completadas}\n'
+            f'Reputação com a guilda: {personagem.reputacao_guilda}\n'
+            f'Moedas totais ganhas: {personagem.moedas_totais_ganhas}\n'
+            f'Personagem criado em: {personagem.data_criacao}')
+  ler_acao(titulo, ['Voltar'], com_voltar=False)
+
+
+def tela_mapa_progresso(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  from ..dados.dungeons import DUNGEONS
+  linhas = [f'{Cor.BRANCO}Mapa de progresso{Cor.RESET}']
+  for dungeon_id, dungeon in DUNGEONS.items():
+    andar_atual = personagem.andar_atual.get(dungeon_id, 1)
+    linhas.append(f'\n{Cor.CIANO}{dungeon.nome}{Cor.RESET}')
+    for andar in dungeon.andares:
+      if andar.numero < andar_atual or andar.chefe in personagem.chefes_derrotados:
+        status = f'{Cor.VERDE}concluído{Cor.RESET}'
+      elif andar.numero == andar_atual:
+        status = f'{Cor.AMARELO}em progresso{Cor.RESET}'
+      else:
+        status = f'{Cor.CINZA}bloqueado{Cor.RESET}'
+      linhas.append(f'  Andar {andar.numero} — {andar.nome} ({andar.faixa_nivel}) — {status}')
+  ler_acao('\n'.join(linhas), ['Voltar'], com_voltar=False)
 
 
 def tela_bau(personagem, escrever=print, ler_acao=None, entrada_texto=input, aguardar=None):

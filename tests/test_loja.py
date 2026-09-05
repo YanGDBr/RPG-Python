@@ -22,3 +22,25 @@ def test_loja_equipamentos_esconde_armas_acima_do_nivel(monkeypatch):
 
   assert 'Cajado de Madeira Velha' not in ' '.join(mensagens)
   assert personagem.equipamentos_guardados == []
+
+
+def test_ofertas_do_dia_sao_deterministicas_para_o_mesmo_dia():
+  assert loja._ofertas_do_dia() == loja._ofertas_do_dia()
+
+
+def test_ofertas_do_dia_cobra_preco_com_desconto():
+  personagem = Personagem(nome='teste', classe='Mago', raca='Humano')
+  personagem.moeda_cobre = 10_000
+  saldo_antes = personagem.moeda_cobre
+
+  respostas_menu = iter([0, None])
+
+  loja.loja_ofertas_do_dia(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _titulo, _opcoes, **_kw: next(respostas_menu),
+      aguardar=lambda: None)
+
+  gasto = saldo_antes - personagem.moeda_cobre
+  item = loja._ofertas_do_dia()[0]
+  assert gasto == loja._preco_com_desconto(item.preco)
+  assert gasto < item.preco

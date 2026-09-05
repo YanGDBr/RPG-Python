@@ -8,11 +8,23 @@ automaticamente para qualquer monstro novo que a gente adicionar.
 """
 
 import random
+from math import trunc
 
+from ..config import REPUTACAO_TIERS
 from ..dados.monstros import MONSTROS
 
 TAXA_CONVERSAO = 1000
 _ORDEM_MOEDAS = ['cobre', 'prata', 'ouro']
+
+
+def tier_reputacao(reputacao):
+  """Índice e nome do tier de reputação atual — cada tier acima do primeiro
+  deixa as missões da guilda mais recompensadoras."""
+  indice, nome = 0, REPUTACAO_TIERS[0][1]
+  for i, (minimo, nome_tier) in enumerate(REPUTACAO_TIERS):
+    if reputacao >= minimo:
+      indice, nome = i, nome_tier
+  return indice, nome
 
 
 def converter(personagem, origem, destino, quantidade):
@@ -47,6 +59,8 @@ def gerar_missoes(personagem):
   # motivo pra travar o sorteio pelo nível do personagem (isso fazia as
   # missões nunca saírem dos monstros do início do jogo).
   candidatos = [nome for nome, m in MONSTROS.items() if not m.chefe]
+  indice_tier, _ = tier_reputacao(personagem.reputacao_guilda)
+  bonus_tier_percentual = indice_tier * 10
 
   missoes = []
   for _ in range(3):
@@ -56,8 +70,8 @@ def gerar_missoes(personagem):
     missoes.append({
       'monstro': nome_monstro,
       'quantidade': quantidade,
-      'recompensa_exp': quantidade * monstro.nivel * 2,
-      'recompensa_moedas': quantidade * monstro.nivel * 3,
+      'recompensa_exp': trunc(quantidade * monstro.nivel * 2 * (1 + bonus_tier_percentual / 100)),
+      'recompensa_moedas': trunc(quantidade * monstro.nivel * 3 * (1 + bonus_tier_percentual / 100)),
     })
   return missoes
 

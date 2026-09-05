@@ -4,9 +4,11 @@ import random
 from datetime import datetime, timedelta
 from math import trunc
 
-from ..config import FOME_CRITICA, FOME_MAXIMA, Cor
-from ..dados.itens import MATERIAIS
+from ..config import (BONUS_ELITE_RECOMPENSA_PERCENTUAL, FOME_CRITICA, FOME_MAXIMA,
+                       REPUTACAO_GANHA_POR_MISSAO, Cor)
+from ..dados.itens import ACESSORIOS_UNICOS, MATERIAIS
 from ..dados.racas import RACAS
+from . import equipamento
 from .inventario import consumir_efeito_ativado
 
 
@@ -43,9 +45,14 @@ def aplicar_desgaste_fome(personagem, escrever):
              f'até você comer.{Cor.RESET}')
 
 
-def conceder_recompensas(personagem, monstro_base, escrever):
+def conceder_recompensas(personagem, monstro_base, escrever, elite=False):
   exp = random.randint(monstro_base.exp_min, monstro_base.exp_max)
   moedas = random.randint(monstro_base.moedas_min, monstro_base.moedas_max)
+
+  if elite:
+    exp = trunc(exp + exp * BONUS_ELITE_RECOMPENSA_PERCENTUAL / 100)
+    moedas = trunc(moedas + moedas * BONUS_ELITE_RECOMPENSA_PERCENTUAL / 100)
+    escrever(f'{Cor.AMARELO}Monstro elite! Recompensas em dobro.{Cor.RESET}')
 
   bonus_drop = consumir_efeito_ativado(personagem, 'drop')
   if bonus_drop:
@@ -58,20 +65,41 @@ def conceder_recompensas(personagem, monstro_base, escrever):
     exp = trunc(exp + exp * raca.valor / 100)
     escrever(f'{Cor.CIANO}Bônus de experiência da sua raça aplicado.{Cor.RESET}')
 
+  bonus_exp_acessorio = equipamento.exp_extra_acessorio(personagem)
+  if bonus_exp_acessorio:
+    exp = trunc(exp + exp * bonus_exp_acessorio / 100)
+
+  bonus_ouro_acessorio = equipamento.ouro_extra_acessorio(personagem)
+  if bonus_ouro_acessorio:
+    moedas = trunc(moedas + moedas * bonus_ouro_acessorio / 100)
+
   personagem.moeda_cobre += moedas
+  personagem.moedas_totais_ganhas += moedas
   personagem.exp += exp
+  personagem.monstros_derrotados += 1
   escrever(f'{Cor.VERDE}Você ganhou {exp} de experiência e {moedas} cobres.{Cor.RESET}')
 
-  for nome_item, chance in monstro_base.drops_item:
+  drops = list(monstro_base.drops_item)
+  if elite:
+    # monstro elite sempre garante pelo menos 1 drop, mesmo que a sorte falhe.
+    drops = [(nome, 1.0) for nome, _chance in drops] or drops
+  for nome_item, chance in drops:
     if random.random() < chance:
       if nome_item in MATERIAIS:
         personagem.adicionar_material(nome_item)
+      elif nome_item in ACESSORIOS_UNICOS:
+        personagem.acessorios_guardados.append(nome_item)
       else:
         personagem.adicionar_item(nome_item)
       escrever(f'{Cor.VERDE}O {monstro_base.nome} deixou cair: {nome_item}!{Cor.RESET}')
 
   if monstro_base.chefe and monstro_base.nome not in personagem.chefes_derrotados:
     personagem.chefes_derrotados.append(monstro_base.nome)
+    acessorio_unico = ACESSORIOS_UNICOS.get(monstro_base.nome)
+    if acessorio_unico:
+      personagem.acessorios_guardados.append(acessorio_unico.nome)
+      escrever(f'{Cor.AMARELO}{monstro_base.nome} deixou cair um acessório único: '
+               f'{acessorio_unico.nome}!{Cor.RESET}')
 
   subiu_nivel = False
   while personagem.exp >= personagem.exp_para_subir:
@@ -94,8 +122,12 @@ def _verificar_missao(personagem, monstro_base, escrever):
   if personagem.missao_quantidade_atual >= personagem.missao_quantidade_alvo:
     personagem.exp += personagem.missao_recompensa_exp
     personagem.moeda_cobre += personagem.missao_recompensa_moedas
-    escrever(f'{Cor.VERDE}Missão concluída! Você ganhou {personagem.missao_recompensa_exp} de exp e '
-             f'{personagem.missao_recompensa_moedas} cobres.{Cor.RESET}')
+    personagem.moedas_totais_ganhas += personagem.missao_recompensa_moedas
+    personagem.missoes_completadas += 1
+    personagem.reputacao_guilda += REPUTACAO_GANHA_POR_MISSAO
+    escrever(f'{Cor.VERDE}Missão concluída! Você ganhou {personagem.missao_recompensa_exp} de exp, '
+             f'{personagem.missao_recompensa_moedas} cobres e {REPUTACAO_GANHA_POR_MISSAO} '
+             f'de reputação com a guilda.{Cor.RESET}')
     personagem.missao_monstro = ''
     personagem.missao_quantidade_alvo = 0
     personagem.missao_quantidade_atual = 0

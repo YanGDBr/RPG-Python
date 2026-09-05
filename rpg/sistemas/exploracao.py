@@ -10,7 +10,7 @@ que existia antes, onde todo andar era visualmente idêntico.
 
 import random
 
-from ..config import Cor
+from ..config import CHANCE_MONSTRO_ELITE, Cor
 from ..dados.dungeons import DUNGEONS
 from ..dados.mapas import MAPAS
 from ..dados.monstros import MONSTROS
@@ -136,9 +136,12 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
       # aparecia na mesma proporção dos outros e a missão nunca avançava.
       pool += [personagem.missao_monstro] * len(andar.monstros_comuns)
     nome_monstro = random.choice(pool)
-    pergunta = f'{Cor.AMARELO}Você encontrou um {nome_monstro}!{Cor.RESET}\nDeseja lutar contra ele?'
+    elite = random.randint(1, CHANCE_MONSTRO_ELITE) == 1
+    prefixo_elite = f'{Cor.AMARELO}[ELITE] {Cor.RESET}' if elite else ''
+    pergunta = (f'{Cor.AMARELO}Você encontrou um {prefixo_elite}{nome_monstro}!{Cor.RESET}\n'
+                f'Deseja lutar contra ele?')
     if ler_confirmacao(pergunta):
-      _lutar(personagem, dungeon_id, nome_monstro, escrever, ler_acao_batalha, aguardar)
+      _lutar(personagem, dungeon_id, nome_monstro, escrever, ler_acao_batalha, aguardar, elite=elite)
     return
 
   if random.randint(1, 2) == 1:
@@ -149,12 +152,14 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
     escrever(f'{Cor.CINZA}Você explorou a dungeon e não encontrou nada.{Cor.RESET}')
 
 
-def _lutar(personagem, dungeon_id, nome_monstro, escrever, ler_acao_batalha, aguardar):
+def _lutar(personagem, dungeon_id, nome_monstro, escrever, ler_acao_batalha, aguardar, elite=False):
   resultado, monstro = batalhar(personagem, MONSTROS[nome_monstro], escrever=escrever,
-                                 ler_acao=ler_acao_batalha, aguardar=aguardar)
+                                 ler_acao=ler_acao_batalha, aguardar=aguardar, elite=elite)
   personagem.local = f'dungeon:{dungeon_id}'
   if resultado == ResultadoBatalha.VITORIA:
     escrever(f'{Cor.VERDE}Você derrotou {monstro.nome}!{Cor.RESET}')
-    conceder_recompensas(personagem, monstro.base, escrever)
+    conceder_recompensas(personagem, monstro.base, escrever, elite=monstro.elite)
   elif resultado == ResultadoBatalha.DERROTA:
     verificar_morte(personagem, escrever)
+  elif resultado == ResultadoBatalha.MONSTRO_FUGIU:
+    escrever(f'{Cor.CIANO}{monstro.nome} fugiu — nenhuma recompensa dessa vez.{Cor.RESET}')

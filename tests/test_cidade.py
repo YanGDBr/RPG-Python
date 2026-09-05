@@ -114,3 +114,68 @@ def test_status_pausa_sem_pontos_disponiveis():
       aguardar=lambda: chamadas_aguardar.append(1))
 
   assert len(chamadas_aguardar) >= 1
+
+
+def test_especializacao_bloqueada_antes_do_nivel_minimo():
+  personagem = _personagem()
+  personagem.nivel = 10
+  chamadas_aguardar = []
+
+  cidade.tela_especializacao(
+      personagem, escrever=lambda *_a, **_k: None,
+      aguardar=lambda: chamadas_aguardar.append(1))
+
+  assert personagem.especializacao == ''
+  assert len(chamadas_aguardar) >= 1
+
+
+def test_especializacao_escolhida_e_permanente_e_concede_habilidade():
+  personagem = _personagem()  # Cavaleiro
+  personagem.nivel = 30
+
+  cidade.tela_especializacao(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _titulo, _opcoes, **_kw: 0,  # primeira opção: Paladino
+      aguardar=lambda: None)
+
+  assert personagem.especializacao == 'Paladino'
+  assert 'Julgamento' in personagem.habilidades_aprendidas
+  vida_apos_escolha = personagem.vida_maxima
+
+  # escolher de novo não deve fazer nada — é permanente.
+  cidade.tela_especializacao(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _titulo, _opcoes, **_kw: 1,  # tentaria escolher Berserker
+      aguardar=lambda: None)
+
+  assert personagem.especializacao == 'Paladino'
+  assert personagem.vida_maxima == vida_apos_escolha
+
+
+def test_ferreiro_encanta_arma_gastando_prata_e_material():
+  personagem = _personagem()
+  personagem.arma_equipada = 'Espada de Ferro'
+  personagem.moeda_prata = 100
+  personagem.adicionar_material('Cristal Arcano')
+
+  respostas_menu = iter([0, None])  # encanta uma vez, depois sai
+
+  cidade.tela_ferreiro(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _titulo, _opcoes, **_kw: next(respostas_menu),
+      aguardar=lambda: None)
+
+  assert personagem.encantamento_arma == 3
+  assert personagem.moeda_prata < 100
+  assert personagem.materiais.get('Cristal Arcano', 0) == 0
+
+
+def test_ferreiro_pausa_sem_nada_pra_encantar():
+  personagem = _personagem()  # sem arma/armadura equipada
+  chamadas_aguardar = []
+
+  cidade.tela_ferreiro(
+      personagem, escrever=lambda *_a, **_k: None,
+      aguardar=lambda: chamadas_aguardar.append(1))
+
+  assert len(chamadas_aguardar) >= 1
