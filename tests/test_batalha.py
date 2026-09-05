@@ -9,7 +9,7 @@ from rpg.sistemas import batalha
 
 
 def _personagem_cavaleiro():
-  p = Personagem(nome='teste', senha_hash='x', classe='Cavaleiro', raca='Humano')
+  p = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   p.habilidades_equipadas = list(CLASSES['Cavaleiro'].habilidades_iniciais)
   return p
 

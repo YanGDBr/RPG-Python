@@ -63,9 +63,11 @@ def loja_itens(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    opcoes = ([f'{a.nome} — {a.preco} cobres ({a.descricao})' for a in CATALOGO_ACESSORIOS] +
-              [f'{i.nome} — {i.preco} cobres ({i.descricao})' for i in CATALOGO_ITENS_CONSUMIVEIS] +
-              [f'{c} — {PRECO_COMIDA} cobres' for c in COMIDAS_VENDIDAS])
+    opcoes = ([f'[Acessório] {a.nome} — {a.preco} cobres ({a.descricao}) — equipe em Personagem'
+               for a in CATALOGO_ACESSORIOS] +
+              [f'[Item] {i.nome} — {i.preco} cobres ({i.descricao}) — use no Inventário'
+               for i in CATALOGO_ITENS_CONSUMIVEIS] +
+              [f'[Comida] {c} — {PRECO_COMIDA} cobres' for c in COMIDAS_VENDIDAS])
     escolha = ler_acao(_titulo(personagem, 'Loja de Itens/Acessórios/Comida'), opcoes)
     if escolha is None:
       return

@@ -12,7 +12,6 @@ from typing import Dict, List, Optional
 @dataclass
 class Personagem:
   nome: str
-  senha_hash: str
 
   raca: str = ''
   classe: str = ''

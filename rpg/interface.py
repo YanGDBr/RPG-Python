@@ -1,8 +1,24 @@
 """Helpers de renderização de tela: limpar terminal, barras de progresso, cabeçalhos."""
 
 import os
+import re
 
 from .config import Cor
+
+_CODIGO_ANSI = re.compile(r'\033\[[0-9;]*m')
+
+
+def largura_visivel(texto):
+  """Comprimento do texto sem contar os códigos de cor ANSI."""
+  return len(_CODIGO_ANSI.sub('', texto))
+
+
+def ljust_visivel(texto, largura, preenchimento=' '):
+  """Como `str.ljust`, mas contando só os caracteres visíveis — texto com
+  código de cor embutido faria o ljust normal contar bytes invisíveis e
+  desalinhar qualquer caixa/coluna desenhada em ASCII."""
+  faltam = largura - largura_visivel(texto)
+  return texto + preenchimento * max(0, faltam)
 
 
 def limpar_tela():

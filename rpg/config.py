@@ -1,6 +1,6 @@
 """Constantes globais: cores de terminal, caminhos e parâmetros de balanceamento."""
 
-import sys
+import os
 from pathlib import Path
 
 
@@ -20,14 +20,21 @@ class Cor:
 # Fundo destacado usado para marcar a opção selecionada nos menus de seta.
 DESTAQUE = '\033[7m'
 
-if getattr(sys, 'frozen', False):
-  # Rodando como .exe empacotado (PyInstaller): salvar ao lado do .exe, não
-  # na pasta temporária onde o --onefile se descompacta a cada execução.
-  DIRETORIO_BASE = Path(sys.executable).resolve().parent
-else:
-  DIRETORIO_BASE = Path(__file__).resolve().parent.parent
+def _diretorio_de_dados_do_usuario() -> Path:
+  """Pasta padrão do sistema operacional pra guardar o save — não depende de
+  onde o jogo foi executado (nem de rodar como .exe ou como script), então o
+  save sobrevive a mover/reconstruir o executável e a trocar de pasta."""
+  nome_pasta = 'RPGHabusken'
+  if os.name == 'nt':
+    base = os.environ.get('APPDATA') or str(Path.home())
+  else:
+    base = os.environ.get('XDG_DATA_HOME') or str(Path.home() / '.local' / 'share')
+  return Path(base) / nome_pasta
 
-ARQUIVO_SAVE = DIRETORIO_BASE / 'contas.json'
+
+DIRETORIO_BASE = _diretorio_de_dados_do_usuario()
+ARQUIVO_SAVE = DIRETORIO_BASE / 'saves.json'
+NUMERO_DE_SLOTS = 3
 
 # Balanceamento
 CHANCE_CRITICO_BASE = 8          # em porcentagem

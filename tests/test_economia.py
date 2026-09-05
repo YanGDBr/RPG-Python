@@ -6,7 +6,7 @@ from rpg.sistemas import economia
 
 
 def _personagem_baixo_nivel():
-  p = Personagem(nome='teste', senha_hash='x', classe='Cavaleiro', raca='Humano')
+  p = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   p.nivel = 1
   return p
 

@@ -1,53 +1,44 @@
-"""Salvamento em JSON (no lugar do pickle) e hash de senha.
+"""Salvamento em JSON, em 3 save slots — sem conta/senha, só personagens.
 
-Antes o save era um dicionário de objetos `conta` serializado com pickle — além
-de pickle poder executar código arbitrário ao carregar um arquivo malicioso,
-o formato binário é impossível de inspecionar ou editar à mão. JSON resolve os
-dois problemas e, como `Personagem` é um dataclass plano, salvar/carregar vira
-uma linha (`dataclasses.asdict` / `Personagem(**dados)`).
+O arquivo mora numa pasta padrão do sistema operacional (ver `config.py`),
+não mais do lado do executável — assim o save sobrevive a reconstruções do
+.exe e não depende de rodar sempre da mesma pasta.
 """
 
 import dataclasses
-import hashlib
 import json
-from typing import Dict
+from typing import List, Optional
 
-from .config import ARQUIVO_SAVE
+from .config import ARQUIVO_SAVE, NUMERO_DE_SLOTS
 from .modelos.personagem import Personagem
 
 _CAMPOS_VALIDOS = {campo.name for campo in dataclasses.fields(Personagem)}
 
 
-def gerar_hash_senha(senha: str) -> str:
-  return hashlib.sha256(senha.encode('utf-8')).hexdigest()
-
-
-def verificar_senha(senha: str, hash_armazenado: str) -> bool:
-  return gerar_hash_senha(senha) == hash_armazenado
-
-
-def carregar_contas() -> Dict[str, Personagem]:
+def carregar_slots() -> List[Optional[Personagem]]:
   if not ARQUIVO_SAVE.exists():
-    return {}
+    return [None] * NUMERO_DE_SLOTS
+
   with open(ARQUIVO_SAVE, 'r', encoding='utf-8') as arquivo:
     dados_brutos = json.load(arquivo)
 
-  contas = {}
-  for nome, dados in dados_brutos.items():
-    filtrados = {chave: valor for chave, valor in dados.items()
-                 if chave in _CAMPOS_VALIDOS}
-    contas[nome] = Personagem(**filtrados)
-  return contas
+  slots: List[Optional[Personagem]] = []
+  for indice in range(NUMERO_DE_SLOTS):
+    dados_slot = dados_brutos.get(str(indice))
+    if dados_slot is None:
+      slots.append(None)
+    else:
+      filtrados = {chave: valor for chave, valor in dados_slot.items()
+                   if chave in _CAMPOS_VALIDOS}
+      slots.append(Personagem(**filtrados))
+  return slots
 
 
-def salvar_contas(contas: Dict[str, Personagem]):
-  dados_brutos = {nome: dataclasses.asdict(personagem)
-                   for nome, personagem in contas.items()}
+def salvar_slots(slots: List[Optional[Personagem]]):
+  dados_brutos = {
+    str(indice): dataclasses.asdict(personagem) if personagem else None
+    for indice, personagem in enumerate(slots)
+  }
   ARQUIVO_SAVE.parent.mkdir(parents=True, exist_ok=True)
   with open(ARQUIVO_SAVE, 'w', encoding='utf-8') as arquivo:
     json.dump(dados_brutos, arquivo, ensure_ascii=False, indent=2)
-
-
-def salvar_personagem(contas: Dict[str, Personagem], personagem: Personagem):
-  contas[personagem.nome] = personagem
-  salvar_contas(contas)

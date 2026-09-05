@@ -6,7 +6,7 @@ from rpg.sistemas import cidade
 
 
 def _personagem():
-  return Personagem(nome='teste', senha_hash='x', classe='Cavaleiro', raca='Humano')
+  return Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
 
 
 def test_mestre_habusken_pausa_ao_rejeitar_jogador_sem_boss_derrotado():
@@ -63,6 +63,40 @@ def test_mestre_habusken_apaga_a_tela_antes_de_pedir_a_sequencia():
   assert eventos.count('limpar') >= 2
   assert eventos[-1] == 'pediu_sequencia'
   assert eventos[-2] == 'limpar'
+
+
+def test_personagem_mostra_equipamento_atual_mesmo_sem_nada_pra_trocar():
+  """Regressão: depois de equipar o único acessório guardado, a tela só
+  mostrava um erro genérico ('nada pra trocar') sem nunca confirmar que o
+  acessório realmente ficou equipado — parecia que o equipar tinha falhado."""
+  personagem = _personagem()
+  personagem.acessorio_equipado = 'Bracelete da Sorte'  # já equipado, nada guardado sobrando
+  telas_mostradas = []
+
+  def _fake_menu(titulo, _opcoes, **_kw):
+    telas_mostradas.append(titulo)
+    return None
+
+  cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=_fake_menu, aguardar=lambda: None)
+
+  assert telas_mostradas
+  assert 'Bracelete da Sorte' in telas_mostradas[0]
+
+
+def test_personagem_equipa_o_unico_acessorio_guardado():
+  personagem = _personagem()
+  personagem.acessorios_guardados = ['Bracelete da Sorte']
+  respostas = iter([0])
+
+  def _fake_menu(_titulo, _opcoes, **_kw):
+    return next(respostas, None)
+
+  cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=_fake_menu, aguardar=lambda: None)
+
+  assert personagem.acessorio_equipado == 'Bracelete da Sorte'
+  assert personagem.acessorios_guardados == []
 
 
 def test_status_pausa_sem_pontos_disponiveis():

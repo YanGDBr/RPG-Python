@@ -27,7 +27,7 @@ def _leitor_menu_sequencia(sequencia):
 
 
 def _personagem_cavaleiro():
-  personagem = Personagem(nome='HeroiTeste', senha_hash='x', classe='Cavaleiro', raca='Humano')
+  personagem = Personagem(nome='HeroiTeste', classe='Cavaleiro', raca='Humano')
   personagem.habilidades_aprendidas = list(CLASSES['Cavaleiro'].habilidades_iniciais)
   personagem.habilidades_equipadas = list(CLASSES['Cavaleiro'].habilidades_iniciais)
   return personagem

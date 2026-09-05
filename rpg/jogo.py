@@ -1,4 +1,4 @@
-"""Orquestração do jogo: login/registro, criação de personagem e o loop
+"""Orquestração do jogo: seleção de save slot, criação de personagem e o loop
 principal (vila -> loja/dungeon/status/etc). Tudo aqui é loop de verdade —
 nada de função chamando a si mesma pra sempre feito o jogo original.
 """
@@ -10,10 +10,10 @@ from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
 from .dados.racas import RACAS
 from .entrada import menu as menu_padrao
-from .entrada import pedir_texto
-from .interface import limpar_tela
+from .entrada import pedir_texto, perguntar_sim_nao
+from .interface import barra, cabecalho, limpar_tela, ljust_visivel
 from .modelos.personagem import Personagem
-from .persistencia import carregar_contas, gerar_hash_senha, salvar_contas, verificar_senha
+from .persistencia import carregar_slots, salvar_slots
 from .sistemas import cidade, equipamento, exploracao, inventario, loja
 from .sistemas.progressao import tentar_reviver
 
@@ -28,9 +28,46 @@ Você acorda em um corpo adulto, numa casa simples, com uma mochila contendo 100
 de comida e documentos de identidade. Decide se tornar um aventureiro e desvendar o mistério das dungeons.
 """
 
+_ICONE_CLASSE = {'Mago': '(*)', 'Cavaleiro': '[X]', 'Arqueiro': '}=>'}
+_LARGURA_CAIXA = 50
 
-def _criar_personagem(nome, senha):
-  personagem = Personagem(nome=nome, senha_hash=gerar_hash_senha(senha))
+
+def _linha_caixa(texto):
+  return f'|{ljust_visivel(" " + texto, _LARGURA_CAIXA - 2)}|'
+
+
+def _caixa_slot(indice, personagem):
+  borda = '+' + '-' * (_LARGURA_CAIXA - 2) + '+'
+  if personagem is None:
+    linhas = [
+      borda,
+      _linha_caixa(f'{Cor.BRANCO}SLOT {indice + 1}{Cor.RESET}'),
+      _linha_caixa(f'{Cor.CINZA}(vazio — escolha para criar um personagem){Cor.RESET}'),
+      borda,
+    ]
+    return '\n'.join(linhas)
+
+  icone = _ICONE_CLASSE.get(personagem.classe, '?')
+  vida_max = equipamento.vida_maxima_efetiva(personagem)
+  linhas = [
+    borda,
+    _linha_caixa(f'{Cor.BRANCO}SLOT {indice + 1}{Cor.RESET}'),
+    _linha_caixa(f'{icone} {personagem.nome} — {personagem.raca} {personagem.classe}, Nv.{personagem.nivel}'),
+    _linha_caixa(f'Vida: {barra(personagem.vida, vida_max, largura=22, cor=Cor.VERMELHO)}'),
+    borda,
+  ]
+  return '\n'.join(linhas)
+
+
+def _tela_selecionar_slot(slots):
+  titulo = f'{cabecalho("RPG DE HABUSKEN")}\n\nEscolha um save slot:'
+  opcoes = [_caixa_slot(i, slots[i]) for i in range(len(slots))] + ['Sair do jogo']
+  return menu_padrao(titulo, opcoes, com_voltar=False)
+
+
+def _criar_personagem():
+  nome = pedir_texto('Nome do personagem: -->')
+  personagem = Personagem(nome=nome)
 
   limpar_tela()
   print(HISTORIA_INICIAL)
@@ -68,36 +105,7 @@ def _criar_personagem(nome, senha):
   return personagem
 
 
-def _registrar(contas):
-  nome = pedir_texto('Nome de usuário: -->')
-  if nome in contas:
-    print(f'{Cor.VERMELHO}Esse nome já está em uso.{Cor.RESET}')
-    input('Enter para continuar...')
-    return None
-  senha = pedir_texto('Senha: -->')
-  personagem = _criar_personagem(nome, senha)
-  contas[nome] = personagem
-  salvar_contas(contas)
-  print(f'{Cor.VERDE}Conta criada com sucesso!{Cor.RESET}')
-  input('Enter para continuar...')
-  return personagem
-
-
-def _entrar(contas):
-  nome = pedir_texto('Nome de usuário: -->')
-  if nome not in contas:
-    print(f'{Cor.VERMELHO}Nome não encontrado.{Cor.RESET}')
-    input('Enter para continuar...')
-    return None
-  senha = pedir_texto('Senha: -->')
-  if not verificar_senha(senha, contas[nome].senha_hash):
-    print(f'{Cor.VERMELHO}Senha incorreta.{Cor.RESET}')
-    input('Enter para continuar...')
-    return None
-  return contas[nome]
-
-
-def _aguardar_revive_se_necessario(personagem, contas):
+def _aguardar_revive_se_necessario(personagem, slots):
   while personagem.morto:
     limpar_tela()
     if tentar_reviver(personagem):
@@ -107,7 +115,7 @@ def _aguardar_revive_se_necessario(personagem, contas):
     escolha = menu_padrao(f'{Cor.VERMELHO}Você está morto. Aguarde 5 minutos para reviver.{Cor.RESET}',
                            ['Tentar novamente', 'Salvar e sair do jogo'], com_voltar=False)
     if escolha == 1:
-      salvar_contas(contas)
+      salvar_slots(slots)
       print('Dados salvos.')
       sys.exit()
 
@@ -143,7 +151,7 @@ def _tela_loja(personagem):
     ecrans[escolha](personagem)
 
 
-def _tela_dungeon(personagem, dungeon_id, contas):
+def _tela_dungeon(personagem, dungeon_id, slots):
   dungeon = DUNGEONS[dungeon_id]
   while True:
     andar_num = personagem.andar_atual[dungeon_id]
@@ -166,7 +174,7 @@ def _tela_dungeon(personagem, dungeon_id, contas):
     if acao == 'Explorar':
       exploracao.explorar(personagem, dungeon_id)
       if personagem.morto:
-        _aguardar_revive_se_necessario(personagem, contas)
+        _aguardar_revive_se_necessario(personagem, slots)
         return
     elif acao == 'Inventário':
       _tela_inventario(personagem)
@@ -178,10 +186,10 @@ def _tela_dungeon(personagem, dungeon_id, contas):
       return
 
 
-def _tela_vila(personagem, contas):
+def _tela_vila(personagem, slots):
   while True:
     if personagem.morto:
-      _aguardar_revive_se_necessario(personagem, contas)
+      _aguardar_revive_se_necessario(personagem, slots)
 
     opcoes = ['Loja', 'Mestre de Habusken', 'Dungeon de Habusken']
     if personagem.torre_arcana_liberada:
@@ -202,11 +210,11 @@ def _tela_vila(personagem, contas):
     elif acao == 'Mestre de Habusken':
       cidade.tela_mestre_habusken(personagem)
     elif acao == 'Dungeon de Habusken':
-      _tela_dungeon(personagem, 'habusken', contas)
+      _tela_dungeon(personagem, 'habusken', slots)
       if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
         personagem.torre_arcana_liberada = True
     elif acao == 'Torre Arcana':
-      _tela_dungeon(personagem, 'torre_arcana', contas)
+      _tela_dungeon(personagem, 'torre_arcana', slots)
     elif acao == 'Personagem':
       cidade.tela_personagem(personagem)
     elif acao == 'Casa':
@@ -224,28 +232,46 @@ def _tela_vila(personagem, contas):
     elif acao == 'Bancada de Trabalho':
       cidade.tela_crafting(personagem)
     elif acao == 'Salvar Dados':
-      salvar_contas(contas)
+      salvar_slots(slots)
       print(f'{Cor.VERDE}Dados salvos com sucesso!{Cor.RESET}')
       input('Enter para continuar...')
     elif acao == 'Salvar e Sair':
-      salvar_contas(contas)
+      salvar_slots(slots)
       print(f'{Cor.VERDE}Dados salvos. Até a próxima!{Cor.RESET}')
       sys.exit()
 
 
 def iniciar():
-  contas = carregar_contas()
+  slots = carregar_slots()
   personagem = None
+
   while personagem is None:
     limpar_tela()
-    escolha = menu_padrao('Bem-vindo ao RPG de Habusken!', ['Registrar', 'Entrar', 'Sair'], com_voltar=False)
-    if escolha == 0:
-      personagem = _registrar(contas)
-    elif escolha == 1:
-      personagem = _entrar(contas)
-    else:
+    escolha = _tela_selecionar_slot(slots)
+    if escolha == len(slots):
       print('Até a próxima!')
       return
+    indice = escolha
 
-  _aguardar_revive_se_necessario(personagem, contas)
-  _tela_vila(personagem, contas)
+    if slots[indice] is None:
+      personagem = _criar_personagem()
+      slots[indice] = personagem
+      salvar_slots(slots)
+      print(f'{Cor.VERDE}Personagem criado com sucesso!{Cor.RESET}')
+      input('Enter para continuar...')
+    else:
+      limpar_tela()
+      acao = menu_padrao(_caixa_slot(indice, slots[indice]),
+                          ['Continuar', 'Apagar personagem', 'Voltar'], com_voltar=False)
+      if acao == 0:
+        personagem = slots[indice]
+      elif acao == 1:
+        nome_antigo = slots[indice].nome
+        if perguntar_sim_nao(f'Tem certeza que quer apagar {nome_antigo}? Isso não pode ser desfeito.'):
+          slots[indice] = None
+          salvar_slots(slots)
+          print(f'{Cor.AMARELO}{nome_antigo} foi apagado.{Cor.RESET}')
+          input('Enter para continuar...')
+
+  _aguardar_revive_se_necessario(personagem, slots)
+  _tela_vila(personagem, slots)

@@ -2,32 +2,44 @@ from rpg import persistencia
 from rpg.modelos.personagem import Personagem
 
 
-def test_hash_senha_nao_e_texto_plano_e_verifica_corretamente():
-  hash_gerado = persistencia.gerar_hash_senha('minhasenha')
-  assert hash_gerado != 'minhasenha'
-  assert persistencia.verificar_senha('minhasenha', hash_gerado)
-  assert not persistencia.verificar_senha('senhaerrada', hash_gerado)
+def test_carregar_sem_arquivo_devolve_slots_vazios(tmp_path, monkeypatch):
+  monkeypatch.setattr(persistencia, 'ARQUIVO_SAVE', tmp_path / 'nao_existe.json')
+  slots = persistencia.carregar_slots()
+  assert slots == [None, None, None]
 
 
-def test_round_trip_salvar_e_carregar(tmp_path, monkeypatch):
-  caminho_falso = tmp_path / 'contas.json'
+def test_round_trip_salvar_e_carregar_slots(tmp_path, monkeypatch):
+  caminho_falso = tmp_path / 'saves.json'
   monkeypatch.setattr(persistencia, 'ARQUIVO_SAVE', caminho_falso)
 
-  personagem = Personagem(nome='Ana', senha_hash=persistencia.gerar_hash_senha('123'))
+  personagem = Personagem(nome='Ana')
   personagem.nivel = 5
   personagem.inventario['Perfume Anti-Monstro'] = 2
   personagem.habilidades_equipadas = ['Investida', 'Corte Fatal', 'Espada Mágica']
 
-  persistencia.salvar_contas({'Ana': personagem})
+  slots = [None, personagem, None]
+  persistencia.salvar_slots(slots)
   assert caminho_falso.exists()
 
-  carregadas = persistencia.carregar_contas()
-  assert carregadas['Ana'].nivel == 5
-  assert carregadas['Ana'].inventario['Perfume Anti-Monstro'] == 2
-  assert carregadas['Ana'].habilidades_equipadas == ['Investida', 'Corte Fatal', 'Espada Mágica']
-  assert persistencia.verificar_senha('123', carregadas['Ana'].senha_hash)
+  carregados = persistencia.carregar_slots()
+  assert carregados[0] is None
+  assert carregados[2] is None
+  assert carregados[1].nome == 'Ana'
+  assert carregados[1].nivel == 5
+  assert carregados[1].inventario['Perfume Anti-Monstro'] == 2
+  assert carregados[1].habilidades_equipadas == ['Investida', 'Corte Fatal', 'Espada Mágica']
 
 
-def test_carregar_sem_arquivo_devolve_dicionario_vazio(tmp_path, monkeypatch):
-  monkeypatch.setattr(persistencia, 'ARQUIVO_SAVE', tmp_path / 'nao_existe.json')
-  assert persistencia.carregar_contas() == {}
+def test_apagar_slot_e_salvar_mantem_null(tmp_path, monkeypatch):
+  caminho_falso = tmp_path / 'saves.json'
+  monkeypatch.setattr(persistencia, 'ARQUIVO_SAVE', caminho_falso)
+
+  slots = [Personagem(nome='Bob'), None, None]
+  persistencia.salvar_slots(slots)
+
+  slots_recarregados = persistencia.carregar_slots()
+  slots_recarregados[0] = None  # apaga o personagem do slot 0
+  persistencia.salvar_slots(slots_recarregados)
+
+  slots_finais = persistencia.carregar_slots()
+  assert slots_finais == [None, None, None]

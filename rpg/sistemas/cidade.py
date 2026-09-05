@@ -165,8 +165,12 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
               [f'Equipar armadura: {n}' for n in personagem.armaduras_guardadas] +
               [f'Equipar acessório: {n}' for n in personagem.acessorios_guardados])
     if not opcoes:
-      escrever(f'{Cor.VERMELHO}Você não tem nada guardado para trocar. Compre na loja.{Cor.RESET}')
-      aguardar()
+      # Antes isso só mostrava um erro e saía, sem nunca exibir o `titulo`
+      # (que tem o equipamento atual) — parecia que o equipar tinha falhado,
+      # mesmo quando tinha funcionado normalmente.
+      titulo_vazio = (f'{titulo}\n\n'
+                      f'{Cor.CIANO}Nada guardado pra trocar agora. Compre mais na loja.{Cor.RESET}')
+      ler_acao(titulo_vazio, ['Voltar'], com_voltar=False)
       return
 
     escolha = ler_acao(titulo, opcoes)
