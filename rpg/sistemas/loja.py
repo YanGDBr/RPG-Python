@@ -32,11 +32,13 @@ def _pagar(personagem, preco, escrever):
 def loja_pocoes(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     opcoes = [f'Poção de {p.nome} — {p.preco} cobres' for p in CATALOGO_POCOES]
-    escolha = ler_acao(_titulo(personagem, 'Loja de Poções'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Loja de Poções'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     pocao = CATALOGO_POCOES[escolha]
     if _pagar(personagem, pocao.preco, escrever):
       personagem.pocoes[pocao.nome] = personagem.pocoes.get(pocao.nome, 0) + 1
@@ -47,11 +49,13 @@ def loja_pocoes(personagem, escrever=print, ler_acao=None, aguardar=None):
 def loja_armaduras(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     opcoes = [f'{a.nome} — {a.preco} cobres ({a.descricao})' for a in CATALOGO_ARMADURAS]
-    escolha = ler_acao(_titulo(personagem, 'Loja de Armaduras'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Loja de Armaduras'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     armadura = CATALOGO_ARMADURAS[escolha]
     if armadura.nome in personagem.armaduras_guardadas or personagem.armadura_equipada == armadura.nome:
       escrever(f'{Cor.AMARELO}Você já tem essa armadura.{Cor.RESET}')
@@ -66,12 +70,14 @@ def loja_armaduras(personagem, escrever=print, ler_acao=None, aguardar=None):
 def loja_acessorios(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     opcoes = [f'{a.nome} — {a.preco} cobres ({a.descricao}) — equipe em Personagem'
               for a in CATALOGO_ACESSORIOS]
-    escolha = ler_acao(_titulo(personagem, 'Loja de Acessórios'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Loja de Acessórios'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     acessorio = CATALOGO_ACESSORIOS[escolha]
     if (acessorio.nome in personagem.acessorios_guardados
         or acessorio.nome in personagem.acessorios_equipados):
@@ -87,12 +93,14 @@ def loja_acessorios(personagem, escrever=print, ler_acao=None, aguardar=None):
 def loja_itens_consumiveis(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     opcoes = [f'{i.nome} — {i.preco} cobres ({i.descricao}) — use no Inventário'
               for i in CATALOGO_ITENS_CONSUMIVEIS]
-    escolha = ler_acao(_titulo(personagem, 'Loja de Itens'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Loja de Itens'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     item = CATALOGO_ITENS_CONSUMIVEIS[escolha]
     if _pagar(personagem, item.preco, escrever):
       personagem.adicionar_item(item.nome)
@@ -103,11 +111,13 @@ def loja_itens_consumiveis(personagem, escrever=print, ler_acao=None, aguardar=N
 def loja_comidas(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     opcoes = [f'{c} — {PRECO_COMIDA} cobres' for c in COMIDAS_VENDIDAS]
-    escolha = ler_acao(_titulo(personagem, 'Loja de Comidas'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Loja de Comidas'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     nome_comida = COMIDAS_VENDIDAS[escolha]
     if _pagar(personagem, PRECO_COMIDA, escrever):
       personagem.comidas[nome_comida] = personagem.comidas.get(nome_comida, 0) + 1
@@ -129,14 +139,16 @@ def loja_ofertas_do_dia(personagem, escrever=print, ler_acao=None, aguardar=None
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   ofertas = _ofertas_do_dia()
+  indice = 0
   while True:
     opcoes = [f'{item.nome} — {Cor.CINZA}{item.preco}{Cor.RESET} '
               f'{Cor.VERDE}{_preco_com_desconto(item.preco)} cobres{Cor.RESET} '
               f'({DESCONTO_OFERTA_DIA}% off)' for item in ofertas]
     titulo = _titulo(personagem, f'Ofertas do Dia ({date.today().isoformat()})')
-    escolha = ler_acao(titulo, opcoes)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     item = ofertas[escolha]
     preco_final = _preco_com_desconto(item.preco)
     if isinstance(item, Acessorio):
@@ -161,6 +173,7 @@ def loja_ofertas_do_dia(personagem, escrever=print, ler_acao=None, aguardar=None
 def loja_equipamentos(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     armas = [a for a in armas_disponiveis_para_classe(personagem.classe)
              if a.nivel_minimo <= personagem.nivel]
@@ -169,9 +182,10 @@ def loja_equipamentos(personagem, escrever=print, ler_acao=None, aguardar=None):
       aguardar()
       return
     opcoes = [f'{a.nome} — {a.preco} cobres ({a.bonus_poder_percentual}% de poder)' for a in armas]
-    escolha = ler_acao(_titulo(personagem, 'Loja de Equipamentos'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Loja de Equipamentos'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     arma = armas[escolha]
     if arma.nome in personagem.equipamentos_guardados or personagem.arma_equipada == arma.nome:
       escrever(f'{Cor.AMARELO}Você já tem essa arma.{Cor.RESET}')

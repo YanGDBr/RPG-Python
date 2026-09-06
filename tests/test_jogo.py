@@ -305,3 +305,76 @@ def test_derrotar_vashtar_mostra_epilogo_uma_unica_vez(monkeypatch):
 
   assert personagem.historia_concluida is True
   assert any('Vashtar' in m for m in mensagens)
+
+
+def test_vila_nao_tem_mais_guia_elemental_como_opcao_propria():
+  """O Guia Elemental virou um tópico dentro do Tutorial — não deveria mais
+  aparecer solto em nenhuma categoria da vila."""
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  for _chave, obter_opcoes in jogo._OPCOES_POR_CATEGORIA.values():
+    assert 'Guia Elemental' not in obter_opcoes(personagem)
+
+
+def test_todas_as_opcoes_de_categoria_sao_reconhecidas_por_executar_acao(monkeypatch):
+  """Regressão: uma opção presente numa categoria mas sem `elif` correspondente
+  em `_executar_acao_vila` simplesmente não faria nada ao ser escolhida."""
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.torre_arcana_liberada = True
+  personagem.abismo_submerso_liberado = True
+  personagem.nivel = 999  # garante a opção "Especialização" também
+
+  chamadas = []
+  for chave in ('_tela_loja', '_tela_dungeon', '_tela_mapa_mundo'):
+    monkeypatch.setattr(jogo, chave, lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_mestre_habusken', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_personagem', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_casa', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_desbloquear_habilidades', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_status', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_tutorial', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_guilda', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_curandeira', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_bau', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_crafting', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_ferreiro', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_especializacao', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_estatisticas', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_mapa_progresso', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_diario_conquistas', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo, 'salvar_slots', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.mundo, 'mostrar_falas', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr('builtins.input', lambda *_a, **_k: '')
+  monkeypatch.setattr('builtins.print', lambda *_a, **_k: None)
+
+  acoes_testaveis = []
+  for _chave, obter_opcoes in jogo._OPCOES_POR_CATEGORIA.values():
+    acoes_testaveis += [a for a in obter_opcoes(personagem) if a != 'Salvar e Sair']
+
+  for acao in acoes_testaveis:
+    antes = len(chamadas)
+    jogo._executar_acao_vila(acao, personagem, slots=[None, None, None])
+    assert len(chamadas) == antes + 1, f'"{acao}" não disparou nenhuma tela'
+
+
+def test_submenu_vila_lembra_a_ultima_opcao_selecionada(monkeypatch):
+  """Pedido do usuário: sair de uma tela (ex.: Personagem) e voltar pro menu
+  anterior deve manter aquele item já selecionado, em vez de resetar pro
+  topo — aqui simulado como duas visitas seguidas à mesma categoria."""
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  indices_iniciais_vistos = []
+  respostas = iter([3, None, None])  # 1ª visita: escolhe índice 3, depois sai; 2ª visita: sai direto
+
+  def _fake_menu(_titulo, _opcoes, *, indice_inicial=0, **_kw):
+    indices_iniciais_vistos.append(indice_inicial)
+    return next(respostas)
+
+  monkeypatch.setattr(jogo, 'menu_padrao', _fake_menu)
+  monkeypatch.setattr(jogo.cidade, 'tela_crafting', lambda *_a, **_k: None)
+
+  indices = {'vila': 0, 'explorar': 0, 'cidade': 0, 'personagem': 0, 'registros': 0, 'sistema': 0}
+  jogo._submenu_vila(personagem, [None, None, None], 'Cidade', indices)  # 1ª visita
+  jogo._submenu_vila(personagem, [None, None, None], 'Cidade', indices)  # 2ª visita
+
+  # 1ª visita: abre em 0, escolhe 3, redesenha já em 3; 2ª visita: já abre
+  # direto no índice 3 lembrado da vez anterior, sem resetar pro topo.
+  assert indices_iniciais_vistos == [0, 3, 3]

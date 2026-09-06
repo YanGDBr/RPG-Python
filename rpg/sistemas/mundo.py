@@ -21,7 +21,8 @@ motor de exploração, porque ela pode abrir uma batalha de verdade.
 
 import random
 
-from ..config import CHANCE_ENCONTRO_SELVAGEM, JANELA_MUNDO_ALTURA, JANELA_MUNDO_LARGURA, Cor
+from ..config import (ACOES_POR_DESGASTE_FOME_MUNDO, CHANCE_ENCONTRO_SELVAGEM, FOME_MAXIMA,
+                       JANELA_MUNDO_ALTURA, JANELA_MUNDO_LARGURA, Cor)
 from ..dados.monstros import MONSTROS
 from ..dados.npcs import NPCS
 from ..entrada import aguardar_leitura, ler_tecla, menu as menu_padrao, perguntar_sim_nao
@@ -64,7 +65,9 @@ def _desenhar_mapa(mapa, posicao, titulo, eventos, personagem, zonas_selvagens, 
   fim_y = min(altura_mapa, origem_y + altura_janela)
   fim_x = min(largura_mapa, origem_x + largura_janela)
 
-  linhas = [f'  {equipamento.resumo_status(personagem)}\n',
+  cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
+  linhas = [f'  {equipamento.resumo_status(personagem)}  '
+            f'{cor_fome}Fome {personagem.fome}/{FOME_MAXIMA}{Cor.RESET}\n',
             f'  {Cor.BRANCO}{titulo}{Cor.RESET}\n']
   for y in range(origem_y, fim_y):
     celulas = []
@@ -147,7 +150,7 @@ def explorar_mapa(personagem, mapa, eventos, titulo, *, escrever=None, leitor_te
     if mapa[novo_y][novo_x] not in celulas_andaveis:
       continue
     posicao = [novo_y, novo_x]
-    aplicar_desgaste_fome(personagem, escrever)
+    aplicar_desgaste_fome(personagem, escrever, limite_acoes=ACOES_POR_DESGASTE_FOME_MUNDO)
 
     caractere = mapa[posicao[0]][posicao[1]]
     if caractere in eventos:

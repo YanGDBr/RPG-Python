@@ -78,7 +78,27 @@ def test_falar_com_npc_mostra_as_falas_e_aguarda(monkeypatch):
 
 def test_andar_no_mundo_desgasta_fome_por_passo():
   """Diferente da dungeon (só desgasta ao pisar num `?`), no mundo aberto
-  cada passo de verdade conta — é o que o usuário pediu explicitamente."""
+  cada passo de verdade conta — é o que o usuário pediu explicitamente. Usa
+  um limiar bem maior que o da dungeon (ACOES_POR_DESGASTE_FOME_MUNDO), pra
+  não zerar a fome depois de só alguns passos andando por aí."""
+  from rpg.config import ACOES_POR_DESGASTE_FOME_MUNDO
+  personagem = _personagem()
+  fome_antes = personagem.fome
+  corredor = '.' * (ACOES_POR_DESGASTE_FOME_MUNDO + 2)
+  mapa = ('#' * (len(corredor) + 2), '#E' + corredor + '#', '#' * (len(corredor) + 2))
+
+  mundo.explorar_mapa(
+      personagem, mapa, {}, 'Teste',
+      escrever=lambda *_a, **_k: None,
+      leitor_tecla=_leitor(['direita'] * ACOES_POR_DESGASTE_FOME_MUNDO + ['esc']),
+      limpar=lambda: None, aguardar=lambda: None)
+
+  assert personagem.fome < fome_antes
+
+
+def test_andar_no_mundo_gasta_fome_bem_mais_devagar_que_na_dungeon():
+  """Regressão direta do pedido do usuário: no mesmo número de passos que
+  zeraria a fome numa dungeon, o mundo aberto mal deveria arranhar a fome."""
   from rpg.config import ACOES_POR_DESGASTE_FOME
   personagem = _personagem()
   fome_antes = personagem.fome
@@ -91,7 +111,17 @@ def test_andar_no_mundo_desgasta_fome_por_passo():
       leitor_tecla=_leitor(['direita'] * ACOES_POR_DESGASTE_FOME + ['esc']),
       limpar=lambda: None, aguardar=lambda: None)
 
-  assert personagem.fome < fome_antes
+  assert personagem.fome == fome_antes  # nenhum desgaste ainda nesse número de passos
+
+
+def test_mapa_do_mundo_exibe_a_fome_atual():
+  personagem = _personagem()
+  personagem.fome = 7
+  mapa = ('#####', '#E..#', '#####')
+
+  texto = mundo._desenhar_mapa(mapa, [1, 1], 'Teste', {}, personagem, {}, (5, 3))
+
+  assert 'Fome 7/10' in texto
 
 
 def test_janela_da_camera_mostra_so_uma_parte_de_mapa_grande():

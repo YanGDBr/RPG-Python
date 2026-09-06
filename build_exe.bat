@@ -6,6 +6,13 @@ if not exist .venv\Scripts\python.exe (
     python -m venv .venv
 )
 
+.venv\Scripts\python.exe -m pip --version >nul 2>&1
+if errorlevel 1 (
+    echo Ambiente virtual sem pip ^(comum quando ele foi criado por "uv venv"^) - instalando pip...
+    .venv\Scripts\python.exe -m ensurepip --upgrade
+    if errorlevel 1 goto :erro
+)
+
 echo Instalando dependencias de build (jogo + PyInstaller)...
 .venv\Scripts\python.exe -m pip install --upgrade pip >nul
 .venv\Scripts\python.exe -m pip install -r requirements-build.txt

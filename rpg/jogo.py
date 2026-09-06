@@ -382,96 +382,139 @@ def _tela_mapa_mundo(personagem, slots):
         input('\nAperte Enter para continuar...')
 
 
-def _tela_vila(personagem, slots):
+_CATEGORIAS_VILA = ['Explorar', 'Cidade', 'Personagem', 'Registros', 'Sistema']
+
+_OPCOES_CIDADE = ['Loja', 'Curandeira', 'Ferreiro', 'Bancada de Trabalho', 'Saldo',
+                  'Mestre de Habusken', 'Conversar com o Ancião', 'Casa']
+_OPCOES_REGISTROS = ['Tutorial', 'Estatísticas', 'Mapa de Progresso', 'Diário de Conquistas']
+_OPCOES_SISTEMA = ['Salvar Dados', 'Salvar e Sair']
+
+
+def _opcoes_explorar(personagem):
+  opcoes = ['Dungeon de Habusken']
+  if personagem.torre_arcana_liberada:
+    opcoes.append('Torre Arcana')
+  if personagem.abismo_submerso_liberado:
+    opcoes.append('Abismo Submerso')
+  opcoes += ['Mapa do Mundo', 'Guilda']
+  return opcoes
+
+
+def _opcoes_personagem_vila(personagem):
+  opcoes = ['Personagem', 'Status', 'Desbloquear Habilidades']
+  if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
+    opcoes.append('Especialização')
+  return opcoes
+
+
+_OPCOES_POR_CATEGORIA = {
+  'Explorar': ('explorar', _opcoes_explorar),
+  'Cidade': ('cidade', lambda _p: list(_OPCOES_CIDADE)),
+  'Personagem': ('personagem', _opcoes_personagem_vila),
+  'Registros': ('registros', lambda _p: list(_OPCOES_REGISTROS)),
+  'Sistema': ('sistema', lambda _p: list(_OPCOES_SISTEMA)),
+}
+
+
+def _titulo_vila(personagem):
+  cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
+  return (f'{Cor.BRANCO}Vila Habusken — {personagem.nome}{Cor.RESET}\n'
+          f'{equipamento.resumo_status(personagem)}  '
+          f'{cor_fome}Fome {personagem.fome}/10{Cor.RESET}')
+
+
+def _executar_acao_vila(acao, personagem, slots):
+  if acao == 'Loja':
+    _tela_loja(personagem)
+  elif acao == 'Mestre de Habusken':
+    cidade.tela_mestre_habusken(personagem)
+  elif acao == 'Conversar com o Ancião':
+    npc = NPCS['anciao_habusken']
+    mundo.mostrar_falas(npc.nome, npc.falas(personagem), print, lambda: input('Enter para continuar...'),
+                        limpar_tela)
+  elif acao == 'Dungeon de Habusken':
+    _tela_dungeon(personagem, 'habusken', slots)
+    if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
+      personagem.torre_arcana_liberada = True
+  elif acao == 'Torre Arcana':
+    _tela_dungeon(personagem, 'torre_arcana', slots)
+    if 'O Arquiteto' in personagem.chefes_derrotados:
+      personagem.abismo_submerso_liberado = True
+  elif acao == 'Abismo Submerso':
+    _tela_dungeon(personagem, 'abismo_submerso', slots)
+    if 'Kraken Ancestral' in personagem.chefes_derrotados:
+      personagem.cratera_vhalos_liberado = True
+      if not personagem.abismo_epilogo_mostrado:
+        personagem.abismo_epilogo_mostrado = True
+        limpar_tela()
+        print(EPILOGO_ABISMO)
+        input('\nAperte Enter para continuar...')
+  elif acao == 'Mapa do Mundo':
+    _tela_mapa_mundo(personagem, slots)
+  elif acao == 'Personagem':
+    cidade.tela_personagem(personagem)
+  elif acao == 'Casa':
+    cidade.tela_casa(personagem)
+  elif acao == 'Desbloquear Habilidades':
+    cidade.tela_desbloquear_habilidades(personagem)
+  elif acao == 'Status':
+    cidade.tela_status(personagem)
+  elif acao == 'Tutorial':
+    cidade.tela_tutorial(personagem)
+  elif acao == 'Guilda':
+    cidade.tela_guilda(personagem)
+  elif acao == 'Curandeira':
+    cidade.tela_curandeira(personagem)
+  elif acao == 'Saldo':
+    cidade.tela_bau(personagem)
+  elif acao == 'Bancada de Trabalho':
+    cidade.tela_crafting(personagem)
+  elif acao == 'Ferreiro':
+    cidade.tela_ferreiro(personagem)
+  elif acao == 'Especialização':
+    cidade.tela_especializacao(personagem)
+  elif acao == 'Estatísticas':
+    cidade.tela_estatisticas(personagem)
+  elif acao == 'Mapa de Progresso':
+    cidade.tela_mapa_progresso(personagem)
+  elif acao == 'Diário de Conquistas':
+    cidade.tela_diario_conquistas(personagem)
+  elif acao == 'Salvar Dados':
+    salvar_slots(slots)
+    print(f'{Cor.VERDE}Dados salvos com sucesso!{Cor.RESET}')
+    input('Enter para continuar...')
+  elif acao == 'Salvar e Sair':
+    salvar_slots(slots)
+    print(f'{Cor.VERDE}Dados salvos. Até a próxima!{Cor.RESET}')
+    sys.exit()
+
+
+def _submenu_vila(personagem, slots, categoria, indices):
+  chave, obter_opcoes = _OPCOES_POR_CATEGORIA[categoria]
   while True:
     _talvez_autosalvar(personagem, slots)
     if personagem.morto:
       _processar_morte_se_necessario(personagem)
 
-    opcoes = ['Loja', 'Mestre de Habusken', 'Conversar com o Ancião', 'Dungeon de Habusken']
-    if personagem.torre_arcana_liberada:
-      opcoes.append('Torre Arcana')
-    if personagem.abismo_submerso_liberado:
-      opcoes.append('Abismo Submerso')
-    opcoes.append('Mapa do Mundo')
-    opcoes += ['Personagem', 'Casa', 'Desbloquear Habilidades', 'Status', 'Guia Elemental',
-               'Tutorial', 'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho', 'Ferreiro']
-    if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
-      opcoes.append('Especialização')
-    opcoes += ['Estatísticas', 'Mapa de Progresso', 'Diário de Conquistas', 'Salvar Dados', 'Salvar e Sair']
+    opcoes = obter_opcoes(personagem)
+    escolha = menu_padrao(_titulo_vila(personagem), opcoes, indice_inicial=indices[chave])
+    if escolha is None:
+      return
+    indices[chave] = escolha
+    _executar_acao_vila(opcoes[escolha], personagem, slots)
 
-    cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
-    titulo = (f'{Cor.BRANCO}Vila Habusken — {personagem.nome}{Cor.RESET}\n'
-              f'{equipamento.resumo_status(personagem)}  '
-              f'{cor_fome}Fome {personagem.fome}/10{Cor.RESET}')
-    escolha = menu_padrao(titulo, opcoes, com_voltar=False)
-    acao = opcoes[escolha]
 
-    if acao == 'Loja':
-      _tela_loja(personagem)
-    elif acao == 'Mestre de Habusken':
-      cidade.tela_mestre_habusken(personagem)
-    elif acao == 'Conversar com o Ancião':
-      npc = NPCS['anciao_habusken']
-      mundo.mostrar_falas(npc.nome, npc.falas(personagem), print, lambda: input('Enter para continuar...'),
-                          limpar_tela)
-    elif acao == 'Dungeon de Habusken':
-      _tela_dungeon(personagem, 'habusken', slots)
-      if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
-        personagem.torre_arcana_liberada = True
-    elif acao == 'Torre Arcana':
-      _tela_dungeon(personagem, 'torre_arcana', slots)
-      if 'O Arquiteto' in personagem.chefes_derrotados:
-        personagem.abismo_submerso_liberado = True
-    elif acao == 'Abismo Submerso':
-      _tela_dungeon(personagem, 'abismo_submerso', slots)
-      if 'Kraken Ancestral' in personagem.chefes_derrotados:
-        personagem.cratera_vhalos_liberado = True
-        if not personagem.abismo_epilogo_mostrado:
-          personagem.abismo_epilogo_mostrado = True
-          limpar_tela()
-          print(EPILOGO_ABISMO)
-          input('\nAperte Enter para continuar...')
-    elif acao == 'Mapa do Mundo':
-      _tela_mapa_mundo(personagem, slots)
-    elif acao == 'Personagem':
-      cidade.tela_personagem(personagem)
-    elif acao == 'Casa':
-      cidade.tela_casa(personagem)
-    elif acao == 'Desbloquear Habilidades':
-      cidade.tela_desbloquear_habilidades(personagem)
-    elif acao == 'Status':
-      cidade.tela_status(personagem)
-    elif acao == 'Guia Elemental':
-      cidade.tela_guia_elemental(personagem)
-    elif acao == 'Tutorial':
-      cidade.tela_tutorial(personagem)
-    elif acao == 'Guilda':
-      cidade.tela_guilda(personagem)
-    elif acao == 'Curandeira':
-      cidade.tela_curandeira(personagem)
-    elif acao == 'Saldo':
-      cidade.tela_bau(personagem)
-    elif acao == 'Bancada de Trabalho':
-      cidade.tela_crafting(personagem)
-    elif acao == 'Ferreiro':
-      cidade.tela_ferreiro(personagem)
-    elif acao == 'Especialização':
-      cidade.tela_especializacao(personagem)
-    elif acao == 'Estatísticas':
-      cidade.tela_estatisticas(personagem)
-    elif acao == 'Mapa de Progresso':
-      cidade.tela_mapa_progresso(personagem)
-    elif acao == 'Diário de Conquistas':
-      cidade.tela_diario_conquistas(personagem)
-    elif acao == 'Salvar Dados':
-      salvar_slots(slots)
-      print(f'{Cor.VERDE}Dados salvos com sucesso!{Cor.RESET}')
-      input('Enter para continuar...')
-    elif acao == 'Salvar e Sair':
-      salvar_slots(slots)
-      print(f'{Cor.VERDE}Dados salvos. Até a próxima!{Cor.RESET}')
-      sys.exit()
+def _tela_vila(personagem, slots):
+  indices = {'vila': 0, 'explorar': 0, 'cidade': 0, 'personagem': 0, 'registros': 0, 'sistema': 0}
+  while True:
+    _talvez_autosalvar(personagem, slots)
+    if personagem.morto:
+      _processar_morte_se_necessario(personagem)
+
+    escolha = menu_padrao(_titulo_vila(personagem), _CATEGORIAS_VILA, com_voltar=False,
+                           indice_inicial=indices['vila'])
+    indices['vila'] = escolha
+    _submenu_vila(personagem, slots, _CATEGORIAS_VILA[escolha], indices)
 
 
 def iniciar():

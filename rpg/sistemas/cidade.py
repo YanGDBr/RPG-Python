@@ -39,11 +39,13 @@ def _titulo(personagem, texto):
 def tela_casa(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     opcoes = ['Descansar (recupera tudo, 1x por nível)', 'Comer', 'Voltar']
-    escolha = ler_acao(_titulo(personagem, 'Casa'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Casa'), opcoes, indice_inicial=indice)
     if escolha is None or escolha == 2:
       return
+    indice = escolha
     if escolha == 0:
       if personagem.descansos_usados >= personagem.nivel:
         escrever(f'{Cor.VERMELHO}Você já descansou o máximo de vezes permitido neste nível.{Cor.RESET}')
@@ -94,6 +96,7 @@ def tela_curandeira(personagem, escrever=print, ler_acao=None, entrada_texto=inp
   algo."""
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     falta_vida = equipamento.vida_maxima_efetiva(personagem) - personagem.vida
     falta_mana = equipamento.mana_maxima_efetiva(personagem) - personagem.mana
@@ -108,9 +111,10 @@ def tela_curandeira(personagem, escrever=print, ler_acao=None, entrada_texto=inp
       'Restaurar uma quantidade específica',
       'Voltar',
     ]
-    escolha = ler_acao(_titulo(personagem, 'Curandeira'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Curandeira'), opcoes, indice_inicial=indice)
     if escolha is None or escolha == 4:
       return
+    indice = escolha
 
     if escolha in (0, 1, 2):
       cura_vida = escolha in (0, 1) and falta_vida > 0
@@ -188,6 +192,7 @@ def _comprar_slot_habilidade(personagem, escrever, aguardar):
 def tela_equipar_habilidades(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     max_slots = _max_slots_habilidade(personagem)
     tem_slot_vazio = len(personagem.habilidades_equipadas) < max_slots
@@ -212,9 +217,10 @@ def tela_equipar_habilidades(personagem, escrever=print, ler_acao=None, aguardar
       opcoes.append(f'Comprar slot de habilidade extra — {custo} {_NOME_MOEDA[campo_moeda]}')
 
     titulo = f'{_titulo(personagem, "Habilidades equipadas")} ({total_slots_ocupados}/{max_slots} slots)'
-    escolha = ler_acao(titulo, opcoes)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=indice)
     if escolha is None or escolha < total_slots_ocupados:
       return
+    indice = escolha
 
     if indice_comprar_slot is not None and escolha == indice_comprar_slot:
       _comprar_slot_habilidade(personagem, escrever, aguardar)
@@ -239,6 +245,7 @@ def tela_equipar_habilidades(personagem, escrever=print, ler_acao=None, aguardar
 def tela_status(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     vida_max = equipamento.vida_maxima_efetiva(personagem)
     mana_max = equipamento.mana_maxima_efetiva(personagem)
@@ -259,9 +266,10 @@ def tela_status(personagem, escrever=print, ler_acao=None, aguardar=None):
     titulo = (f'{quadro}\n\n'
               f'{Cor.BRANCO}Pontos de status disponíveis: {personagem.pontos_status}{Cor.RESET}')
     opcoes = ['+5 Vida máxima', '+5 Mana máxima', '+1 Poder', '+1 Sorte (crítico)', 'Equipar habilidades']
-    escolha = ler_acao(titulo, opcoes)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     if escolha in (0, 1, 2, 3):
       if personagem.pontos_status < 1:
         escrever(f'{Cor.VERMELHO}Você não tem pontos de status disponíveis.{Cor.RESET}')
@@ -325,6 +333,7 @@ def _comprar_slot_acessorio(personagem, escrever, aguardar):
 def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     arma = equipamento.resolver_arma(personagem)
     armadura = equipamento.resolver_armadura(personagem)
@@ -368,9 +377,10 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
       ler_acao(titulo_vazio, ['Voltar'], com_voltar=False)
       return
 
-    escolha = ler_acao(titulo, opcoes)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
 
     if escolha < total_armas:
       novo = personagem.equipamentos_guardados.pop(escolha)
@@ -567,11 +577,13 @@ def tela_tutorial(personagem, escrever=print, ler_acao=None, aguardar=None):
   lugar único com a explicação de tudo (elementos, Fúria, efeitos, classes,
   especializações etc.) em vez de ter que descobrir jogando."""
   ler_acao = ler_acao or menu_padrao
+  indice = 0
   while True:
     opcoes = [titulo for titulo, _texto in _TOPICOS_TUTORIAL] + ['Guia Elemental', 'Voltar']
-    escolha = ler_acao(_titulo(personagem, 'Tutorial'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Tutorial'), opcoes, indice_inicial=indice)
     if escolha is None or escolha == len(opcoes) - 1:
       return
+    indice = escolha
     if escolha == len(_TOPICOS_TUTORIAL):
       tela_guia_elemental(personagem, escrever, ler_acao, aguardar)
       continue
@@ -594,6 +606,7 @@ def _resumo_missoes_ativas(personagem):
 def tela_guilda(personagem, escrever=print, ler_acao=None, aguardar=None, _quadros_cache={}):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     dungeons_disponiveis = ['habusken']
     if personagem.torre_arcana_liberada:
@@ -610,15 +623,17 @@ def tela_guilda(personagem, escrever=print, ler_acao=None, aguardar=None, _quadr
               f'{_resumo_missoes_ativas(personagem)}\n\n'
               f'Escolha o quadro de missões de qual dungeon:')
     opcoes = [DUNGEONS[d].nome for d in dungeons_disponiveis]
-    escolha = ler_acao(titulo, opcoes)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     _tela_quadro_andares(personagem, dungeons_disponiveis[escolha], escrever, ler_acao, aguardar,
                           _quadros_cache)
 
 
 def _tela_quadro_andares(personagem, dungeon_id, escrever, ler_acao, aguardar, quadros_cache):
   dungeon = DUNGEONS[dungeon_id]
+  indice = 0
   while True:
     maior = max(personagem.maior_andar_visitado.get(dungeon_id, 1),
                 personagem.andar_atual.get(dungeon_id, 1))
@@ -626,9 +641,10 @@ def _tela_quadro_andares(personagem, dungeon_id, escrever, ler_acao, aguardar, q
     titulo = (f'{Cor.ROSA}Guilda — {dungeon.nome}{Cor.RESET}\n\n'
               f'Só existe quadro de missões dos andares que você já pisou.\n'
               f'Escolha um andar:')
-    escolha = ler_acao(titulo, opcoes)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     _tela_quadro_missoes(personagem, dungeon_id, escolha + 1, escrever, ler_acao, aguardar, quadros_cache)
 
 
@@ -637,6 +653,7 @@ def _tela_quadro_missoes(personagem, dungeon_id, andar_numero, escrever, ler_aca
   if chave not in quadros_cache:
     quadros_cache[chave] = economia.gerar_missoes_do_andar(personagem, dungeon_id, andar_numero)
 
+  cursor = 0
   while True:
     quadro = quadros_cache[chave]
     linhas_quadro = []
@@ -657,9 +674,10 @@ def _tela_quadro_missoes(personagem, dungeon_id, andar_numero, escrever, ler_aca
       opcoes.append(f'{"Desequipar" if equipada else "Equipar"} missão {indice + 1}')
     opcoes.append(f'Renovar quadro ({CUSTO_RENOVAR_QUADRO} cobres)')
 
-    escolha = ler_acao(titulo, opcoes)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=cursor)
     if escolha is None:
       return
+    cursor = escolha
 
     if escolha < len(quadro):
       missao = quadro[escolha]
@@ -689,6 +707,7 @@ def _tela_quadro_missoes(personagem, dungeon_id, andar_numero, escrever, ler_aca
 def tela_desbloquear_habilidades(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     candidatas = [nome for nome in HABILIDADES_DESBLOQUEAVEIS.get(personagem.classe, [])
                   if nome not in personagem.habilidades_aprendidas]
@@ -698,9 +717,10 @@ def tela_desbloquear_habilidades(personagem, escrever=print, ler_acao=None, agua
       return
     opcoes = [f'{Cor.BRANCO}{nome}{Cor.RESET} — nível {HABILIDADES[nome].nivel_minimo}, '
               f'{HABILIDADES[nome].preco} cobres' for nome in candidatas]
-    escolha = ler_acao(_titulo(personagem, 'Habilidades para desbloquear'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Habilidades para desbloquear'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     nome = candidatas[escolha]
     habilidade = HABILIDADES[nome]
     if personagem.nivel < habilidade.nivel_minimo:
@@ -750,6 +770,7 @@ def tela_especializacao(personagem, escrever=print, ler_acao=None, aguardar=None
 def tela_ferreiro(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     tem_arma = bool(personagem.arma_equipada)
     tem_armadura = bool(personagem.armadura_equipada)
@@ -767,9 +788,10 @@ def tela_ferreiro(personagem, escrever=print, ler_acao=None, aguardar=None):
                f'máximo).{Cor.RESET}')
       aguardar()
       return
-    escolha = ler_acao(_titulo(personagem, 'Ferreiro — Encantamento'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Ferreiro — Encantamento'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     alvo_arma = tem_arma and personagem.encantamento_arma < ENCANTAMENTO_MAXIMO_ARMA and escolha == 0
     custo = (ENCANTAMENTO_CUSTO_PRATA_BASE
              * ((personagem.encantamento_arma if alvo_arma else personagem.encantamento_armadura)
@@ -869,15 +891,17 @@ def tela_diario_conquistas(personagem, escrever=print, ler_acao=None, aguardar=N
 def tela_bau(personagem, escrever=print, ler_acao=None, entrada_texto=input, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
+  indice = 0
   while True:
     titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
               f'Cobres: {personagem.moeda_cobre}\n'
               f'Pratas: {personagem.moeda_prata}\n'
               f'Ouros: {personagem.moeda_ouro}')
     opcoes = ['Cobre -> Prata (1000:1)', 'Prata -> Cobre', 'Prata -> Ouro (1000:1)', 'Ouro -> Prata', 'Voltar']
-    escolha = ler_acao(titulo, opcoes)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=indice)
     if escolha is None or escolha == 4:
       return
+    indice = escolha
     origem, destino = [('cobre', 'prata'), ('prata', 'cobre'), ('prata', 'ouro'), ('ouro', 'prata')][escolha]
     quantidade = pedir_numero(f'Quanto de {origem} deseja converter? -->',
                                minimo=1, entrada=entrada_texto, saida=escrever)
@@ -898,11 +922,13 @@ def tela_mestre_habusken(personagem, escrever=print, ler_acao=None, entrada_text
               f'Derrote o chefe do Andar 1 primeiro.{Cor.RESET}')
     aguardar()
     return
+  indice = 0
   while True:
     opcoes = [f'Treinar (50 cobres) — {personagem.treinamento_habusken}% concluído', 'Voltar']
-    escolha = ler_acao(_titulo(personagem, 'Mestre de Habusken'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Mestre de Habusken'), opcoes, indice_inicial=indice)
     if escolha is None or escolha == 1:
       return
+    indice = escolha
     if personagem.moeda_cobre < 50:
       escrever(f'{Cor.VERMELHO}Você não tem 50 cobres.{Cor.RESET}')
       aguardar()
@@ -932,13 +958,15 @@ def tela_crafting(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   receitas = list(RECEITAS.values())
+  indice = 0
   while True:
     opcoes = []
     for receita in receitas:
       requisitos = ', '.join(f'{qtd}x {nome}' for nome, qtd in receita.materiais_necessarios.items())
       opcoes.append(f'{Cor.BRANCO}{receita.nome}{Cor.RESET} (precisa: {requisitos})')
-    escolha = ler_acao(_titulo(personagem, 'Bancada de Trabalho'), opcoes)
+    escolha = ler_acao(_titulo(personagem, 'Bancada de Trabalho'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
+    indice = escolha
     sistema_crafting.craftar(personagem, receitas[escolha], escrever)
     aguardar()

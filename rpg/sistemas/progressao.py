@@ -49,19 +49,25 @@ def verificar_morte(personagem, escrever):
   return True
 
 
-def aplicar_desgaste_fome(personagem, escrever):
+def aplicar_desgaste_fome(personagem, escrever, limite_acoes=None):
   """Chamado a cada ação real (batalha/exploração) — a fome de 5 anos atrás só
   descia uma vez no login e nunca mais fazia diferença nenhuma. Só desgasta de
-  fato 1 a cada ACOES_POR_DESGASTE_FOME ações, senão cai rápido demais."""
+  fato 1 a cada `limite_acoes` ações (padrão: ACOES_POR_DESGASTE_FOME — dungeon
+  usa isso; o mundo aberto passa ACOES_POR_DESGASTE_FOME_MUNDO, bem maior,
+  porque lá desgasta por PASSO de verdade, bem mais frequente).
+
+  Fome zerada dói, mas nunca mata: o mínimo de vida por inanição é 1 — só dá
+  pra morrer perdendo uma luta de verdade, não por esquecer de comer."""
+  limite_base = ACOES_POR_DESGASTE_FOME if limite_acoes is None else limite_acoes
   personagem.acoes_desde_desgaste_fome += 1
-  limite = ACOES_POR_DESGASTE_FOME + equipamento.fome_lenta_acessorio(personagem)
+  limite = limite_base + equipamento.fome_lenta_acessorio(personagem)
   if personagem.acoes_desde_desgaste_fome < limite:
     return
   personagem.acoes_desde_desgaste_fome = 0
   personagem.fome = max(0, personagem.fome - 1)
   if personagem.fome <= 0:
     escrever(f'{Cor.VERMELHO}Você está faminto! Isso está drenando sua vida.{Cor.RESET}')
-    personagem.vida = max(0, personagem.vida - 5)
+    personagem.vida = max(1, personagem.vida - 5)
   elif personagem.fome <= FOME_CRITICA:
     escrever(f'{Cor.AMARELO}Sua fome está crítica — seus ataques causam menos dano '
              f'até você comer.{Cor.RESET}')

@@ -127,3 +127,36 @@ def test_fome_so_desgasta_a_cada_n_acoes():
   progressao.aplicar_desgaste_fome(personagem, lambda *_a, **_k: None)
   assert personagem.fome == 9  # completou o ciclo, desgasta 1
   assert personagem.acoes_desde_desgaste_fome == 0
+
+
+def test_aplicar_desgaste_fome_aceita_limite_de_acoes_customizado():
+  """O mundo aberto passa um limiar bem maior (ACOES_POR_DESGASTE_FOME_MUNDO)
+  que o padrão de dungeon, já que lá desgasta por passo de verdade."""
+  personagem = _personagem()
+  personagem.vida = personagem.vida_maxima
+  personagem.fome = 10
+
+  progressao.aplicar_desgaste_fome(personagem, lambda *_a, **_k: None, limite_acoes=5)
+  assert personagem.fome == 10  # ainda não completou o ciclo de 5
+
+  for _ in range(4):
+    progressao.aplicar_desgaste_fome(personagem, lambda *_a, **_k: None, limite_acoes=5)
+  assert personagem.fome == 9
+
+
+def test_fome_zerada_nunca_derruba_a_vida_abaixo_de_um():
+  """Pedido explícito do usuário: não dá pra morrer de fome, só ficar no
+  mínimo com 1 de vida."""
+  personagem = _personagem()
+  personagem.fome = 0
+  personagem.vida = 3
+
+  for _ in range(ACOES_POR_DESGASTE_FOME):
+    progressao.aplicar_desgaste_fome(personagem, lambda *_a, **_k: None)
+
+  assert personagem.vida == 1
+
+  for _ in range(ACOES_POR_DESGASTE_FOME):
+    progressao.aplicar_desgaste_fome(personagem, lambda *_a, **_k: None)
+
+  assert personagem.vida == 1  # continua no mínimo, nunca some pra 0

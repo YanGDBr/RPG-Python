@@ -112,6 +112,11 @@ MULTIPLICADOR_EXP_GLOBAL = 2.0
 # toda vez — estava caindo rápido demais.
 ACOES_POR_DESGASTE_FOME = 3
 
+# Andar no mundo aberto desgasta fome por PASSO de verdade, bem mais frequente
+# que "1 ação" de dungeon (que só desgasta ao pisar num ponto de interesse) —
+# por isso usa um limiar bem maior, senão a fome zerava depois de poucos passos.
+ACOES_POR_DESGASTE_FOME_MUNDO = 15
+
 # Chance de qualquer efeito de status (habilidade do jogador, ataque de
 # monstro, ou acessório) realmente grudar — nem todo golpe deveria garantir
 # Queimadura/Paralisia/etc, senão vira injusto pra quem está do lado que apanha.
