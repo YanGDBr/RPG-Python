@@ -11,7 +11,7 @@ from .config import DIRETORIO_BACKUPS, INTERVALO_AUTOSAVE_SEGUNDOS, Cor
 from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
 from .dados.especializacoes import NIVEL_MINIMO_ESPECIALIZACAO
-from .dados.mapas_mundo import MAPA_ILYRATH, MAPA_VETHGARD
+from .dados.mapas_mundo import MAPA_HABUSKEN, MAPA_ILYRATH, MAPA_VETHGARD
 from .dados.npcs import NPCS
 from .dados.racas import RACAS
 from .entrada import menu as menu_padrao
@@ -327,6 +327,10 @@ def _entrar_abismo_submerso_callback(personagem, escrever, aguardar, limpar):
   return 'abismo_submerso'
 
 
+def _sair_para_estrada_callback(personagem, escrever, aguardar, limpar):
+  return 'estrada'
+
+
 def _eventos_vethgard():
   return {
     'G': mundo.falar_com_npc('guarda_vethgard'),
@@ -338,6 +342,7 @@ def _eventos_vethgard():
     'A': _entrar_torre_arcana_callback,
     'B': _entrar_abismo_submerso_callback,
     '6': mundo.abrir_bau('vethgard_bau_1', 'pocao', 'Vida', 1),
+    'X': _sair_para_estrada_callback,
   }
 
 
@@ -356,13 +361,101 @@ def _eventos_ilyrath():
   }
 
 
-def _tela_vethgard(personagem, slots):
+def _opcoes_e_secoes_vethgard(personagem):
+  """Mesmo estilo da vila de Habusken: lista única com cabeçalhos visuais,
+  sem sub-telas. Só existe enquanto `modo_cidade == 'menu'` — o modo mapa
+  (ver `_explorar_vethgard`) é a alternativa que anda pela cidade de verdade."""
+  opcoes = ['Ver Mapa de Vethgard']
+  secoes = {0: 'AVENTURA'}
+  if personagem.torre_arcana_liberada:
+    opcoes.append('Torre Arcana')
+  if personagem.abismo_submerso_liberado:
+    opcoes.append('Abismo Submerso')
+
+  secoes[len(opcoes)] = 'CIDADE'
+  opcoes += ['Loja de Acessórios', 'Curandeira', 'Mestre de Vethgard']
+
+  secoes[len(opcoes)] = 'MORADORES'
+  opcoes += ['Falar com o Guarda', 'Falar com a Capitã Wren', 'Falar com o Estudioso Aldric']
+
+  secoes[len(opcoes)] = 'EXPLORAR'
+  opcoes += ['Vasculhar Vethgard']
+
+  return opcoes, secoes
+
+
+def _titulo_vethgard(personagem):
+  cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
+  return (f'{Cor.BRANCO}Vethgard — {personagem.nome}{Cor.RESET}\n'
+          f'{equipamento.resumo_status(personagem)}  '
+          f'{cor_fome}Fome {personagem.fome}/10{Cor.RESET}')
+
+
+def _executar_acao_vethgard(acao, personagem, slots):
+  if acao == 'Ver Mapa de Vethgard':
+    personagem.modo_cidade = 'mapa'
+    return 'mapa'
+  elif acao == 'Torre Arcana':
+    _tela_dungeon(personagem, 'torre_arcana', slots)
+    if 'O Arquiteto' in personagem.chefes_derrotados:
+      personagem.abismo_submerso_liberado = True
+  elif acao == 'Abismo Submerso':
+    _tela_dungeon(personagem, 'abismo_submerso', slots)
+    if 'Kraken Ancestral' in personagem.chefes_derrotados:
+      personagem.cratera_vhalos_liberado = True
+      if not personagem.abismo_epilogo_mostrado:
+        personagem.abismo_epilogo_mostrado = True
+        limpar_tela()
+        print(EPILOGO_ABISMO)
+        input('\nAperte Enter para continuar...')
+  elif acao == 'Loja de Acessórios':
+    loja.loja_acessorios_vethgard(personagem)
+  elif acao == 'Curandeira':
+    cidade.tela_curandeira(personagem)
+  elif acao == 'Mestre de Vethgard':
+    cidade.tela_mestre_vethgard(personagem)
+  elif acao == 'Falar com o Guarda':
+    npc = NPCS['guarda_vethgard']
+    mundo.mostrar_falas(npc.nome, npc.falas(personagem), print, lambda: input('Enter para continuar...'),
+                        limpar_tela)
+  elif acao == 'Falar com a Capitã Wren':
+    mundo.falar_com_npc_e_sidequest('capita_wren', 'ameaca_gelada')(
+        personagem, print, lambda: input('Enter para continuar...'), limpar_tela)
+  elif acao == 'Falar com o Estudioso Aldric':
+    mundo.falar_com_npc_e_sidequest('estudioso_aldric', 'eco_do_abismo')(
+        personagem, print, lambda: input('Enter para continuar...'), limpar_tela)
+  elif acao == 'Vasculhar Vethgard':
+    mundo.abrir_bau('vethgard_bau_1', 'pocao', 'Vida', 1)(
+        personagem, print, lambda: input('Enter para continuar...'), limpar_tela)
+
+
+def _tela_vethgard_menu(personagem, slots):
+  indice = 0
+  while True:
+    _talvez_autosalvar(personagem, slots)
+    opcoes, secoes = _opcoes_e_secoes_vethgard(personagem)
+    escolha = menu_padrao(_titulo_vethgard(personagem), opcoes, com_voltar=False,
+                           indice_inicial=indice, secoes=secoes)
+    indice = escolha
+    resultado = _executar_acao_vethgard(opcoes[escolha], personagem, slots)
+    if resultado == 'mapa':
+      return 'mapa'
+
+
+def _explorar_vethgard(personagem, slots):
+  """Passeio de verdade pelo mapa de Vethgard. Esc não sai mais da cidade —
+  só volta pro menu (pra acessar Personagem/Status/Inventário/etc, que não
+  têm ponto físico no mapa); sair de Vethgard de verdade exige andar até a
+  saída ('X'), que leva de volta pra Estrada de Ilyrath."""
   eventos = _eventos_vethgard()
   while True:
     _talvez_autosalvar(personagem, slots)
     resultado = mundo.explorar_mapa(personagem, MAPA_VETHGARD, eventos, 'Vethgard')
     if resultado is None:
-      return
+      personagem.modo_cidade = 'menu'
+      return None
+    if resultado == 'estrada':
+      return 'estrada'
     if resultado == 'torre_arcana':
       _tela_dungeon(personagem, 'torre_arcana', slots)
       if 'O Arquiteto' in personagem.chefes_derrotados:
@@ -376,6 +469,20 @@ def _tela_vethgard(personagem, slots):
           limpar_tela()
           print(EPILOGO_ABISMO)
           input('\nAperte Enter para continuar...')
+
+
+def _tela_vethgard(personagem, slots):
+  """Dois modos pra ver Vethgard, alternáveis a qualquer momento — pedido
+  explícito do usuário (menu como o de Habusken, sem perder o mapa já
+  pronto). Só devolve o controle pra Estrada quando o jogador de fato anda
+  até a saída no modo mapa; o menu sozinho nunca viaja pra fora da cidade."""
+  while True:
+    if personagem.modo_cidade == 'mapa':
+      resultado = _explorar_vethgard(personagem, slots)
+    else:
+      resultado = _tela_vethgard_menu(personagem, slots)
+    if resultado == 'estrada':
+      return
 
 
 def _tela_mapa_mundo(personagem, slots):
@@ -402,7 +509,7 @@ def _opcoes_e_secoes_vila(personagem):
   jogador achou pior: tinha que entrar e lembrar em qual grupo cada coisa
   estava). `secoes` só organiza visualmente com cabeçalhos coloridos, sem
   adicionar nenhum nível de navegação — sobe/desce passa por cima deles."""
-  opcoes = ['Dungeon de Habusken', 'Mapa do Mundo', 'Guilda']
+  opcoes = ['Dungeon de Habusken', 'Ver Mapa de Habusken', 'Guilda']
   secoes = {0: 'AVENTURA'}
 
   secoes[len(opcoes)] = 'CIDADE'
@@ -443,8 +550,9 @@ def _executar_acao_vila(acao, personagem, slots):
     _tela_dungeon(personagem, 'habusken', slots)
     if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
       personagem.torre_arcana_liberada = True
-  elif acao == 'Mapa do Mundo':
-    _tela_mapa_mundo(personagem, slots)
+  elif acao == 'Ver Mapa de Habusken':
+    personagem.modo_cidade = 'mapa'
+    return 'mapa'
   elif acao == 'Personagem':
     cidade.tela_personagem(personagem)
   elif acao == 'Casa':
@@ -486,6 +594,9 @@ def _executar_acao_vila(acao, personagem, slots):
 
 
 def _tela_vila(personagem, slots):
+  """O modo 'menu' de Habusken — lista de sempre. Retorna quando o jogador
+  escolhe ver o mapa (ver `_tela_habusken`, que alterna entre este e
+  `_explorar_habusken` conforme `personagem.modo_cidade`)."""
   indice = 0
   while True:
     _talvez_autosalvar(personagem, slots)
@@ -496,7 +607,61 @@ def _tela_vila(personagem, slots):
     escolha = menu_padrao(_titulo_vila(personagem), opcoes, com_voltar=False,
                            indice_inicial=indice, secoes=secoes)
     indice = escolha
-    _executar_acao_vila(opcoes[escolha], personagem, slots)
+    resultado = _executar_acao_vila(opcoes[escolha], personagem, slots)
+    if resultado == 'mapa':
+      return
+
+
+def _entrar_dungeon_habusken_callback(personagem, escrever, aguardar, limpar):
+  return 'dungeon_habusken'
+
+
+def _eventos_habusken():
+  return {
+    'D': _entrar_dungeon_habusken_callback,
+    'H': lambda p, e, a, l: cidade.tela_casa(p) or None,
+    'A': mundo.falar_com_npc('anciao_habusken'),
+    'L': lambda p, e, a, l: _tela_loja(p) or None,
+    'C': lambda p, e, a, l: cidade.tela_curandeira(p) or None,
+    'K': lambda p, e, a, l: cidade.tela_ferreiro(p) or None,
+    'B': lambda p, e, a, l: cidade.tela_crafting(p) or None,
+    'S': lambda p, e, a, l: cidade.tela_bau(p) or None,
+    'T': lambda p, e, a, l: cidade.tela_mestre_habusken(p) or None,
+    'X': _sair_para_estrada_callback,
+  }
+
+
+def _explorar_habusken(personagem, slots):
+  """Passeio de verdade pela vila de Habusken. Esc não sai do jogo — só
+  volta pro menu (pra acessar Personagem/Status/Guilda/etc, que não têm
+  ponto físico no mapa); a saída de verdade pra Estrada é o 'X'."""
+  eventos = _eventos_habusken()
+  while True:
+    _talvez_autosalvar(personagem, slots)
+    resultado = mundo.explorar_mapa(personagem, MAPA_HABUSKEN, eventos, 'Habusken')
+    if resultado is None:
+      personagem.modo_cidade = 'menu'
+      return None
+    if resultado == 'estrada':
+      return 'estrada'
+    if resultado == 'dungeon_habusken':
+      _tela_dungeon(personagem, 'habusken', slots)
+      if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
+        personagem.torre_arcana_liberada = True
+
+
+def _tela_habusken(personagem, slots):
+  """Dois modos pra ver Habusken, alternáveis a qualquer momento — pedido
+  explícito do usuário (menu de sempre, mais um modo mapa novo, sem perder
+  nenhum dos dois). É a raiz do jogo — ao contrário de Vethgard, não há pra
+  onde "voltar": sair pela saída do mapa só leva pra Estrada e volta."""
+  while True:
+    if personagem.modo_cidade == 'mapa':
+      resultado = _explorar_habusken(personagem, slots)
+      if resultado == 'estrada':
+        _tela_mapa_mundo(personagem, slots)
+    else:
+      _tela_vila(personagem, slots)
 
 
 def iniciar():
@@ -538,4 +703,4 @@ def iniciar():
           input('Enter para continuar...')
 
   _processar_morte_se_necessario(personagem)
-  _tela_vila(personagem, slots)
+  _tela_habusken(personagem, slots)

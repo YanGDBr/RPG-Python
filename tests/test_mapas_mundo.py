@@ -8,11 +8,13 @@ sempre sabe distinguir "parede" de "ponto de interesse" sem adivinhar."""
 
 from collections import deque
 
-from rpg.dados.mapas_mundo import MAPA_ILYRATH, MAPA_VETHGARD
+from rpg.dados.mapas_mundo import (HABUSKEN_PONTOS, ILYRATH_PONTOS, MAPA_HABUSKEN, MAPA_ILYRATH,
+                                    MAPA_VETHGARD, VETHGARD_PONTOS)
 
 MAPAS_MUNDO = {
-  'ilyrath': (MAPA_ILYRATH, {'T', 'V', 'C'}),
-  'vethgard': (MAPA_VETHGARD, {'S', 'M', 'G'}),
+  'habusken': (MAPA_HABUSKEN, set(HABUSKEN_PONTOS.values())),
+  'ilyrath': (MAPA_ILYRATH, set(ILYRATH_PONTOS.values())),
+  'vethgard': (MAPA_VETHGARD, set(VETHGARD_PONTOS.values())),
 }
 
 

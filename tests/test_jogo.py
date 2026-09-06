@@ -275,6 +275,9 @@ def test_torre_arcana_e_abismo_submerso_nao_aparecem_mais_na_vila_de_habusken():
 
 
 def test_tela_vethgard_entra_na_torre_arcana_e_libera_abismo_submerso(monkeypatch):
+  """`_explorar_vethgard` é o passeio de verdade pelo mapa — o modo 'menu'
+  (`_tela_vethgard_menu`) usaria o menu de setas de verdade e travaria o
+  teste esperando teclado, por isso o teste chama o modo mapa direto."""
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   personagem.torre_arcana_liberada = True
 
@@ -287,7 +290,7 @@ def test_tela_vethgard_entra_na_torre_arcana_e_libera_abismo_submerso(monkeypatc
   monkeypatch.setattr(jogo, '_tela_dungeon', _fake_tela_dungeon)
   monkeypatch.setattr(jogo, '_talvez_autosalvar', lambda *_a, **_k: None)
 
-  jogo._tela_vethgard(personagem, slots=[None, None, None])
+  jogo._explorar_vethgard(personagem, slots=[None, None, None])
 
   assert personagem.abismo_submerso_liberado is True
 
@@ -309,7 +312,7 @@ def test_tela_vethgard_derrotar_kraken_libera_cratera_e_mostra_epilogo_uma_vez(m
   mensagens = []
   monkeypatch.setattr('builtins.print', lambda *args, **_k: mensagens.append(' '.join(str(a) for a in args)))
 
-  jogo._tela_vethgard(personagem, slots=[None, None, None])
+  jogo._explorar_vethgard(personagem, slots=[None, None, None])
 
   assert personagem.cratera_vhalos_liberado is True
   assert personagem.abismo_epilogo_mostrado is True
@@ -329,13 +332,20 @@ def test_eventos_do_mundo_aberto_referenciam_npcs_e_sidequests_validos(monkeypat
 
   monkeypatch.setattr('rpg.sistemas.mundo.menu_padrao', lambda *_a, **_k: None)
   monkeypatch.setattr('rpg.sistemas.mundo.mostrar_falas', lambda *_a, **_k: None)
-  # os eventos de "prédio" de Vethgard (loja/curandeira/mestre) abrem telas de
-  # verdade, que por padrão usam menu/input reais — mockadas aqui também.
+  # os eventos de "prédio" de Vethgard/Habusken (loja/curandeira/mestre/etc)
+  # abrem telas de verdade, que por padrão usam menu/input reais — mockadas
+  # aqui também.
   monkeypatch.setattr(jogo.loja, 'loja_acessorios_vethgard', lambda *_a, **_k: None)
   monkeypatch.setattr(jogo.cidade, 'tela_curandeira', lambda *_a, **_k: None)
   monkeypatch.setattr(jogo.cidade, 'tela_mestre_vethgard', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo, '_tela_loja', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo.cidade, 'tela_ferreiro', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo.cidade, 'tela_crafting', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo.cidade, 'tela_bau', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo.cidade, 'tela_mestre_habusken', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo.cidade, 'tela_casa', lambda *_a, **_k: None)
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
-  for eventos in (jogo._eventos_ilyrath(), jogo._eventos_vethgard()):
+  for eventos in (jogo._eventos_ilyrath(), jogo._eventos_vethgard(), jogo._eventos_habusken()):
     for caractere, callback in eventos.items():
       # cada callback tem que ser chamável sem estourar exceção, com um
       # personagem "zerado" e todas as dependências injetadas mockadas.
@@ -378,7 +388,10 @@ def test_mapas_do_mundo_aberto_tem_todos_os_caracteres_de_evento_cobertos():
   """Todo caractere não-terreno (`.`, '#', 'E', 'F') que aparece no mapa
   precisa ter um evento registrado — senão o jogador pisa nele e nada
   acontece (ou pior, ele fica preso se o caractere não for andável)."""
-  from rpg.dados.mapas_mundo import MAPA_ILYRATH, MAPA_VETHGARD
+  from rpg.dados.mapas_mundo import MAPA_HABUSKEN, MAPA_ILYRATH, MAPA_VETHGARD
+
+  caracteres_habusken = {c for linha in MAPA_HABUSKEN for c in linha} - {'.', '#', 'E', 'F'}
+  assert caracteres_habusken == set(jogo._eventos_habusken())
 
   caracteres_ilyrath = {c for linha in MAPA_ILYRATH for c in linha} - {'.', '#', 'E', 'F'}
   assert caracteres_ilyrath == set(jogo._eventos_ilyrath())
@@ -429,7 +442,7 @@ def test_todas_as_opcoes_da_vila_sao_reconhecidas_por_executar_acao(monkeypatch)
   personagem.nivel = 999  # garante a opção "Especialização" também
 
   chamadas = []
-  for chave in ('_tela_loja', '_tela_dungeon', '_tela_mapa_mundo'):
+  for chave in ('_tela_loja', '_tela_dungeon'):
     monkeypatch.setattr(jogo, chave, lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.cidade, 'tela_mestre_habusken', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.cidade, 'tela_personagem', lambda *_a, **_k: chamadas.append(1))
@@ -453,12 +466,197 @@ def test_todas_as_opcoes_da_vila_sao_reconhecidas_por_executar_acao(monkeypatch)
   monkeypatch.setattr('builtins.print', lambda *_a, **_k: None)
 
   opcoes, _secoes = jogo._opcoes_e_secoes_vila(personagem)
-  acoes_testaveis = [a for a in opcoes if a != 'Salvar e Sair']
+  # 'Salvar e Sair' encerra o processo (sys.exit); 'Ver Mapa de Habusken' só
+  # troca `modo_cidade` e devolve um sinal — não dispara nenhuma tela mockada
+  # (ver `test_ver_mapa_de_habusken_muda_o_modo_e_sinaliza_saida_do_menu`).
+  acoes_testaveis = [a for a in opcoes if a not in ('Salvar e Sair', 'Ver Mapa de Habusken')]
 
   for acao in acoes_testaveis:
     antes = len(chamadas)
     jogo._executar_acao_vila(acao, personagem, slots=[None, None, None])
     assert len(chamadas) == antes + 1, f'"{acao}" não disparou nenhuma tela'
+
+
+def test_ver_mapa_de_habusken_muda_o_modo_e_sinaliza_saida_do_menu():
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.modo_cidade = 'menu'
+
+  resultado = jogo._executar_acao_vila('Ver Mapa de Habusken', personagem, slots=[None, None, None])
+
+  assert resultado == 'mapa'
+  assert personagem.modo_cidade == 'mapa'
+
+
+def test_explorar_habusken_esc_nao_sai_do_jogo_so_volta_pro_menu(monkeypatch):
+  """Pedido do usuário: Habusken também ganhou seu próprio mapa andável — Esc
+  nesse mapa não deve fechar o jogo nem "sair" de Habusken, só alternar de
+  volta pro modo menu (onde Personagem/Status/Diário/etc continuam
+  acessíveis, já que esses não têm ponto físico no mapa)."""
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.modo_cidade = 'mapa'
+  monkeypatch.setattr(jogo.mundo, 'explorar_mapa', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo, '_talvez_autosalvar', lambda *_a, **_k: None)
+
+  resultado = jogo._explorar_habusken(personagem, slots=[None, None, None])
+
+  assert resultado is None
+  assert personagem.modo_cidade == 'menu'
+
+
+def test_explorar_habusken_evento_de_saida_retorna_sinal_estrada(monkeypatch):
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  monkeypatch.setattr(jogo.mundo, 'explorar_mapa', lambda *_a, **_k: 'estrada')
+  monkeypatch.setattr(jogo, '_talvez_autosalvar', lambda *_a, **_k: None)
+
+  resultado = jogo._explorar_habusken(personagem, slots=[None, None, None])
+
+  assert resultado == 'estrada'
+
+
+def test_explorar_habusken_entra_na_dungeon_e_libera_torre_arcana(monkeypatch):
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  respostas_mapa = iter(['dungeon_habusken', None])
+  monkeypatch.setattr(jogo.mundo, 'explorar_mapa', lambda *_a, **_k: next(respostas_mapa))
+  monkeypatch.setattr(jogo, '_talvez_autosalvar', lambda *_a, **_k: None)
+
+  def _fake_tela_dungeon(p, _dungeon_id, _slots):
+    p.chefes_derrotados.append('Dragão Ancião de Habusken')
+
+  monkeypatch.setattr(jogo, '_tela_dungeon', _fake_tela_dungeon)
+
+  jogo._explorar_habusken(personagem, slots=[None, None, None])
+
+  assert personagem.torre_arcana_liberada is True
+
+
+def test_tela_habusken_modo_mapa_chama_explorar_habusken(monkeypatch):
+  class _Para(Exception):
+    pass
+
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.modo_cidade = 'mapa'
+  chamadas = []
+
+  def _fake_explorar(_p, _slots):
+    chamadas.append('mapa')
+    raise _Para()
+
+  monkeypatch.setattr(jogo, '_explorar_habusken', _fake_explorar)
+  monkeypatch.setattr(jogo, '_tela_vila', lambda *_a, **_k: chamadas.append('menu'))
+
+  with pytest.raises(_Para):
+    jogo._tela_habusken(personagem, slots=[None, None, None])
+
+  assert chamadas == ['mapa']
+
+
+def test_tela_habusken_modo_menu_chama_tela_vila(monkeypatch):
+  class _Para(Exception):
+    pass
+
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.modo_cidade = 'menu'
+  chamadas = []
+
+  def _fake_vila(_p, _slots):
+    chamadas.append('menu')
+    raise _Para()
+
+  monkeypatch.setattr(jogo, '_tela_vila', _fake_vila)
+  monkeypatch.setattr(jogo, '_explorar_habusken', lambda *_a, **_k: chamadas.append('mapa'))
+
+  with pytest.raises(_Para):
+    jogo._tela_habusken(personagem, slots=[None, None, None])
+
+  assert chamadas == ['menu']
+
+
+def test_tela_habusken_ao_sair_pela_estrada_chama_tela_mapa_mundo_e_continua_no_mapa(monkeypatch):
+  """Depois que `_tela_mapa_mundo` retorna (o jogador andou de volta pra
+  Habusken), o loop continua e, como `modo_cidade` ainda é 'mapa', mostra o
+  mapa de Habusken de novo — sem precisar reentrar via menu."""
+  class _Para(Exception):
+    pass
+
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.modo_cidade = 'mapa'
+  chamadas = []
+
+  def _fake_explorar(_p, _slots):
+    chamadas.append('explorar')
+    return 'estrada'
+
+  def _fake_mapa_mundo(_p, _slots):
+    chamadas.append('estrada')
+    if chamadas.count('estrada') >= 2:
+      raise _Para()
+
+  monkeypatch.setattr(jogo, '_explorar_habusken', _fake_explorar)
+  monkeypatch.setattr(jogo, '_tela_mapa_mundo', _fake_mapa_mundo)
+
+  with pytest.raises(_Para):
+    jogo._tela_habusken(personagem, slots=[None, None, None])
+
+  assert chamadas == ['explorar', 'estrada', 'explorar', 'estrada']
+
+
+def test_executar_acao_vethgard_ver_mapa_muda_o_modo_e_sinaliza():
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.modo_cidade = 'menu'
+
+  resultado = jogo._executar_acao_vethgard('Ver Mapa de Vethgard', personagem, slots=[None, None, None])
+
+  assert resultado == 'mapa'
+  assert personagem.modo_cidade == 'mapa'
+
+
+def test_todas_as_opcoes_de_vethgard_sao_reconhecidas_por_executar_acao(monkeypatch):
+  """Mesma regressão de `test_todas_as_opcoes_da_vila_sao_reconhecidas_por_executar_acao`,
+  agora pro menu novo de Vethgard."""
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.torre_arcana_liberada = True
+  personagem.abismo_submerso_liberado = True
+
+  chamadas = []
+  monkeypatch.setattr(jogo, '_tela_dungeon', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.loja, 'loja_acessorios_vethgard', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_curandeira', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_mestre_vethgard', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.mundo, 'mostrar_falas', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.mundo, 'falar_com_npc_e_sidequest',
+                       lambda *_a, **_k: (lambda *_cb_a, **_cb_k: chamadas.append(1)))
+  monkeypatch.setattr(jogo.mundo, 'abrir_bau',
+                       lambda *_a, **_k: (lambda *_cb_a, **_cb_k: chamadas.append(1)))
+
+  opcoes, _secoes = jogo._opcoes_e_secoes_vethgard(personagem)
+  acoes_testaveis = [a for a in opcoes if a != 'Ver Mapa de Vethgard']
+
+  for acao in acoes_testaveis:
+    antes = len(chamadas)
+    jogo._executar_acao_vethgard(acao, personagem, slots=[None, None, None])
+    assert len(chamadas) == antes + 1, f'"{acao}" não disparou nenhuma tela'
+
+
+def test_tela_vethgard_alterna_entre_menu_e_mapa_ate_sair_pela_estrada(monkeypatch):
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.modo_cidade = 'menu'
+  chamadas = []
+
+  def _fake_menu(p, _slots):
+    chamadas.append('menu')
+    p.modo_cidade = 'mapa'  # jogador escolheu "Ver Mapa de Vethgard"
+    return 'mapa'
+
+  def _fake_explorar(_p, _slots):
+    chamadas.append('mapa')
+    return 'estrada'  # jogador andou até a saida ('X')
+
+  monkeypatch.setattr(jogo, '_tela_vethgard_menu', _fake_menu)
+  monkeypatch.setattr(jogo, '_explorar_vethgard', _fake_explorar)
+
+  jogo._tela_vethgard(personagem, slots=[None, None, None])
+
+  assert chamadas == ['menu', 'mapa']
 
 
 def test_vila_lembra_a_ultima_opcao_selecionada(monkeypatch):

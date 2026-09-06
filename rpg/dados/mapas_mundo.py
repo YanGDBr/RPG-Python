@@ -81,8 +81,9 @@ MAPA_ILYRATH = _construir_mapa_aberto(
 # jogo" saíram do menu de Habusken pra cá, fazendo mais sentido narrativo.
 # 'W' é a Capitã Wren e 'R' o Estudioso Aldric (sidequests de recompensa bem
 # maior — só se chega em Vethgard depois de zerar Habusken inteira). 'G'
-# continua sendo o Guarda de Vethgard (só diálogo). '6' é um baú.
-# Sair (Esc) devolve o jogador ao mapa de Ilyrath.
+# continua sendo o Guarda de Vethgard (só diálogo). '6' é um baú. 'X' é a
+# saída de verdade pra Estrada de Ilyrath — Esc não sai mais da cidade, só
+# alterna pro modo menu (ver rpg/jogo.py: `_tela_vethgard`).
 VETHGARD_OBSTACULOS = _bloco(6, 13, 7, 14) + _bloco(10, 24, 11, 25) + _bloco(3, 26, 4, 26)
 VETHGARD_PONTOS = {
   (8, 4): 'G',    # Guarda de Vethgard
@@ -94,7 +95,33 @@ VETHGARD_PONTOS = {
   (2, 30): 'A',   # -> Torre Arcana
   (14, 30): 'B',  # -> Abismo Submerso
   (4, 30): '6',   # baú
+  (9, 2): 'X',    # -> Estrada de Ilyrath
 }
 MAPA_VETHGARD = _construir_mapa_aberto(
     largura=37, altura=17, entrada=(8, 1),
     obstaculos=VETHGARD_OBSTACULOS, pontos=VETHGARD_PONTOS)
+
+
+# ------------------------------------------------------------------ Habusken
+# A vila inicial também ganhou seu próprio mapa andável — modo alternativo ao
+# menu de lista de sempre (ver rpg/jogo.py: `_tela_habusken`, que alterna
+# entre os dois conforme `Personagem.modo_cidade`). 'D' é a entrada da
+# dungeon de Habusken, 'H' é a Casa, 'A' o Ancião, 'L'/'C'/'K'/'B'/'S'/'T' são
+# Loja/Curandeira/Ferreiro/Bancada de Trabalho/Saldo/Mestre de Habusken. 'X'
+# é a saída pra Estrada de Ilyrath, a caminho de Vethgard.
+HABUSKEN_OBSTACULOS = _bloco(5, 10, 6, 11) + _bloco(9, 18, 10, 19) + _bloco(2, 26, 3, 26)
+HABUSKEN_PONTOS = {
+  (7, 5): 'D',    # Dungeon de Habusken
+  (3, 6): 'H',    # Casa
+  (11, 6): 'A',   # Ancião
+  (3, 14): 'L',   # Loja
+  (11, 14): 'C',  # Curandeira
+  (3, 22): 'K',   # Ferreiro
+  (11, 22): 'B',  # Bancada de Trabalho
+  (7, 16): 'S',   # Saldo
+  (7, 24): 'T',   # Mestre de Habusken
+  (7, 31): 'X',   # -> Estrada de Ilyrath
+}
+MAPA_HABUSKEN = _construir_mapa_aberto(
+    largura=33, altura=15, entrada=(7, 1),
+    obstaculos=HABUSKEN_OBSTACULOS, pontos=HABUSKEN_PONTOS)

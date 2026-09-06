@@ -90,6 +90,11 @@ class Personagem:
   treinamento_vethgard: int = 0
   disciplina_vethgard: bool = False
 
+  # 'menu' (lista, como sempre foi) ou 'mapa' (andar pela cidade) — alternável
+  # a qualquer momento em Habusken/Vethgard (ver rpg/jogo.py). Só dá pra viajar
+  # de uma cidade pra outra no modo mapa, andando até a saída.
+  modo_cidade: str = 'menu'
+
   local: str = 'inicio'
   morto: bool = False
 
