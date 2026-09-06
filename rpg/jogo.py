@@ -373,13 +373,15 @@ def _opcoes_e_secoes_vethgard(personagem):
     opcoes.append('Abismo Submerso')
 
   secoes[len(opcoes)] = 'CIDADE'
-  opcoes += ['Loja de Acessórios', 'Curandeira', 'Mestre de Vethgard']
+  opcoes += ['Loja de Acessórios', 'Mestre de Vethgard']
 
   secoes[len(opcoes)] = 'MORADORES'
   opcoes += ['Falar com o Guarda', 'Falar com a Capitã Wren', 'Falar com o Estudioso Aldric']
 
   secoes[len(opcoes)] = 'EXPLORAR'
   opcoes += ['Vasculhar Vethgard']
+
+  _adicionar_opcoes_universais(opcoes, secoes, personagem)
 
   return opcoes, secoes
 
@@ -410,8 +412,6 @@ def _executar_acao_vethgard(acao, personagem, slots):
         input('\nAperte Enter para continuar...')
   elif acao == 'Loja de Acessórios':
     loja.loja_acessorios_vethgard(personagem)
-  elif acao == 'Curandeira':
-    cidade.tela_curandeira(personagem)
   elif acao == 'Mestre de Vethgard':
     cidade.tela_mestre_vethgard(personagem)
   elif acao == 'Falar com o Guarda':
@@ -427,6 +427,8 @@ def _executar_acao_vethgard(acao, personagem, slots):
   elif acao == 'Vasculhar Vethgard':
     mundo.abrir_bau('vethgard_bau_1', 'pocao', 'Vida', 1)(
         personagem, print, lambda: input('Enter para continuar...'), limpar_tela)
+  else:
+    _executar_acao_universal(acao, personagem, slots)
 
 
 def _tela_vethgard_menu(personagem, slots):
@@ -504,17 +506,17 @@ def _tela_mapa_mundo(personagem, slots):
         input('\nAperte Enter para continuar...')
 
 
-def _opcoes_e_secoes_vila(personagem):
-  """Uma lista só (sem sub-telas — foi tentado categorizar em sub-menus e o
-  jogador achou pior: tinha que entrar e lembrar em qual grupo cada coisa
-  estava). `secoes` só organiza visualmente com cabeçalhos coloridos, sem
-  adicionar nenhum nível de navegação — sobe/desce passa por cima deles."""
-  opcoes = ['Dungeon de Habusken', 'Ver Mapa de Habusken', 'Guilda']
-  secoes = {0: 'AVENTURA'}
-
-  secoes[len(opcoes)] = 'CIDADE'
-  opcoes += ['Loja', 'Curandeira', 'Ferreiro', 'Bancada de Trabalho', 'Saldo',
-             'Mestre de Habusken', 'Conversar com o Ancião', 'Casa']
+def _adicionar_opcoes_universais(opcoes, secoes, personagem):
+  """Opções que existem em QUALQUER cidade, não amarradas a nenhum lugar
+  físico específico — pedido explícito do usuário: "existem opções que não
+  vão desaparecer de cidade em cidade" (Personagem, Status, Casa, etc. antes
+  só apareciam na vila de Habusken e sumiam em Vethgard). Curandeira/
+  Ferreiro/Bancada de Trabalho/Saldo entraram aqui também porque já eram a
+  mesma tela idêntica em qualquer lugar, sem nenhum dado específico de
+  cidade — só Loja/Mestre/NPCs continuam variando cidade a cidade de
+  propósito. Modifica `opcoes`/`secoes` in-place; não devolve nada."""
+  secoes[len(opcoes)] = 'SERVIÇOS'
+  opcoes += ['Curandeira', 'Ferreiro', 'Bancada de Trabalho', 'Saldo', 'Casa']
 
   secoes[len(opcoes)] = 'PERSONAGEM'
   opcoes += ['Personagem', 'Status', 'Inventário', 'Desbloquear Habilidades']
@@ -525,35 +527,14 @@ def _opcoes_e_secoes_vila(personagem):
   opcoes += ['Tutorial', 'Estatísticas', 'Mapa de Progresso', 'Diário de Conquistas']
 
   secoes[len(opcoes)] = 'SISTEMA'
-  opcoes += ['Salvar Dados', 'Salvar e Sair']
-
-  return opcoes, secoes
+  opcoes += ['Guilda', 'Salvar Dados', 'Salvar e Sair']
 
 
-def _titulo_vila(personagem):
-  cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
-  return (f'{Cor.BRANCO}Vila Habusken — {personagem.nome}{Cor.RESET}\n'
-          f'{equipamento.resumo_status(personagem)}  '
-          f'{cor_fome}Fome {personagem.fome}/10{Cor.RESET}')
-
-
-def _executar_acao_vila(acao, personagem, slots):
-  if acao == 'Loja':
-    _tela_loja(personagem)
-  elif acao == 'Mestre de Habusken':
-    cidade.tela_mestre_habusken(personagem)
-  elif acao == 'Conversar com o Ancião':
-    npc = NPCS['anciao_habusken']
-    mundo.mostrar_falas(npc.nome, npc.falas(personagem), print, lambda: input('Enter para continuar...'),
-                        limpar_tela)
-  elif acao == 'Dungeon de Habusken':
-    _tela_dungeon(personagem, 'habusken', slots)
-    if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
-      personagem.torre_arcana_liberada = True
-  elif acao == 'Ver Mapa de Habusken':
-    personagem.modo_cidade = 'mapa'
-    return 'mapa'
-  elif acao == 'Personagem':
+def _executar_acao_universal(acao, personagem, slots):
+  """Contraparte de `_adicionar_opcoes_universais` — trata as ações comuns a
+  qualquer cidade. Devolve True se tratou a ação, False se `acao` não é uma
+  das universais (quem chama trata o resto, específico daquela cidade)."""
+  if acao == 'Personagem':
     cidade.tela_personagem(personagem)
   elif acao == 'Casa':
     cidade.tela_casa(personagem)
@@ -591,6 +572,52 @@ def _executar_acao_vila(acao, personagem, slots):
     salvar_slots(slots)
     print(f'{Cor.VERDE}Dados salvos. Até a próxima!{Cor.RESET}')
     sys.exit()
+  else:
+    return False
+  return True
+
+
+def _opcoes_e_secoes_vila(personagem):
+  """Uma lista só (sem sub-telas — foi tentado categorizar em sub-menus e o
+  jogador achou pior: tinha que entrar e lembrar em qual grupo cada coisa
+  estava). `secoes` só organiza visualmente com cabeçalhos coloridos, sem
+  adicionar nenhum nível de navegação — sobe/desce passa por cima deles."""
+  opcoes = ['Dungeon de Habusken', 'Ver Mapa de Habusken']
+  secoes = {0: 'AVENTURA'}
+
+  secoes[len(opcoes)] = 'CIDADE'
+  opcoes += ['Loja', 'Mestre de Habusken', 'Conversar com o Ancião']
+
+  _adicionar_opcoes_universais(opcoes, secoes, personagem)
+
+  return opcoes, secoes
+
+
+def _titulo_vila(personagem):
+  cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
+  return (f'{Cor.BRANCO}Vila Habusken — {personagem.nome}{Cor.RESET}\n'
+          f'{equipamento.resumo_status(personagem)}  '
+          f'{cor_fome}Fome {personagem.fome}/10{Cor.RESET}')
+
+
+def _executar_acao_vila(acao, personagem, slots):
+  if acao == 'Loja':
+    _tela_loja(personagem)
+  elif acao == 'Mestre de Habusken':
+    cidade.tela_mestre_habusken(personagem)
+  elif acao == 'Conversar com o Ancião':
+    npc = NPCS['anciao_habusken']
+    mundo.mostrar_falas(npc.nome, npc.falas(personagem), print, lambda: input('Enter para continuar...'),
+                        limpar_tela)
+  elif acao == 'Dungeon de Habusken':
+    _tela_dungeon(personagem, 'habusken', slots)
+    if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
+      personagem.torre_arcana_liberada = True
+  elif acao == 'Ver Mapa de Habusken':
+    personagem.modo_cidade = 'mapa'
+    return 'mapa'
+  else:
+    _executar_acao_universal(acao, personagem, slots)
 
 
 def _tela_vila(personagem, slots):

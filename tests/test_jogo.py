@@ -617,19 +617,40 @@ def test_todas_as_opcoes_de_vethgard_sao_reconhecidas_por_executar_acao(monkeypa
   personagem.torre_arcana_liberada = True
   personagem.abismo_submerso_liberado = True
 
+  personagem.nivel = 999  # garante a opção "Especialização" também
+
   chamadas = []
   monkeypatch.setattr(jogo, '_tela_dungeon', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.loja, 'loja_acessorios_vethgard', lambda *_a, **_k: chamadas.append(1))
-  monkeypatch.setattr(jogo.cidade, 'tela_curandeira', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.cidade, 'tela_mestre_vethgard', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.mundo, 'mostrar_falas', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.mundo, 'falar_com_npc_e_sidequest',
                        lambda *_a, **_k: (lambda *_cb_a, **_cb_k: chamadas.append(1)))
   monkeypatch.setattr(jogo.mundo, 'abrir_bau',
                        lambda *_a, **_k: (lambda *_cb_a, **_cb_k: chamadas.append(1)))
+  # opções universais (ver `_adicionar_opcoes_universais`) — as mesmas
+  # mockadas em test_todas_as_opcoes_da_vila_sao_reconhecidas_por_executar_acao.
+  monkeypatch.setattr(jogo.cidade, 'tela_personagem', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_casa', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_desbloquear_habilidades', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_status', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_inventario', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_tutorial', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_guilda', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_curandeira', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_bau', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_crafting', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_ferreiro', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_especializacao', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_estatisticas', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_mapa_progresso', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_diario_conquistas', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo, 'salvar_slots', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr('builtins.input', lambda *_a, **_k: '')
+  monkeypatch.setattr('builtins.print', lambda *_a, **_k: None)
 
   opcoes, _secoes = jogo._opcoes_e_secoes_vethgard(personagem)
-  acoes_testaveis = [a for a in opcoes if a != 'Ver Mapa de Vethgard']
+  acoes_testaveis = [a for a in opcoes if a not in ('Ver Mapa de Vethgard', 'Salvar e Sair')]
 
   for acao in acoes_testaveis:
     antes = len(chamadas)
