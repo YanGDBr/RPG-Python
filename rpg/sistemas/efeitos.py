@@ -4,7 +4,11 @@ numa lista, em vez da string concatenada + regex do jogo original (que fazia
 frágil e impossível de ter dois efeitos com o mesmo prefixo).
 """
 
-DANO_POR_TURNO = {'Queimadura': 15, 'Sangramento': 15, 'Veneno': 12}
+# % da vida MÁXIMA do alvo, não um valor fixo — 15 de dano fixo virava
+# irrisório contra um chefe de milhares de vida e brutal contra um monstro
+# fraco de 50. Contra um chefe tanque isso ainda soma bastante ao longo de
+# várias rodadas, sem precisar escalar o número junto com todo o resto.
+DANO_POR_TURNO = {'Queimadura': 6, 'Sangramento': 6, 'Veneno': 5}
 CURA_POR_TURNO_PERCENTUAL = {'Regeneração': 8}   # % da vida máxima curada por turno
 # Paralisia vem de habilidade/ataque; Atordoado vem de encher a barra de
 # atordoamento (ver ATORDOAMENTO_LIMIAR) — os dois impedem agir do mesmo jeito.
@@ -37,7 +41,8 @@ def processar_efeitos_continuos(lista_efeitos, vida_atual, escrever, nome_alvo, 
       restantes.append(efeito)
       continue
     if nome in DANO_POR_TURNO:
-      dano = DANO_POR_TURNO[nome]
+      base = vida_maxima or vida_atual
+      dano = max(1, round(base * DANO_POR_TURNO[nome] / 100))
       vida_atual = max(0, vida_atual - dano)
       escrever(f'{nome_alvo} sofre {dano} de dano por {nome}.')
     elif nome in CURA_POR_TURNO_PERCENTUAL and vida_maxima:

@@ -11,7 +11,6 @@ from .config import DIRETORIO_BACKUPS, INTERVALO_AUTOSAVE_SEGUNDOS, Cor
 from .dados.classes import CLASSES
 from .dados.dungeons import DUNGEONS
 from .dados.especializacoes import NIVEL_MINIMO_ESPECIALIZACAO
-from .dados.itens import ITENS_CONSUMIVEIS, POCOES, POCOES_CRAFTADAS
 from .dados.mapas_mundo import MAPA_ILYRATH, MAPA_VETHGARD
 from .dados.npcs import NPCS
 from .dados.racas import RACAS
@@ -235,35 +234,6 @@ def _talvez_autosalvar(personagem, slots):
     _estado_autosave['ultimo'] = agora
 
 
-def _descricao_pocao(nome):
-  pocao = POCOES.get(nome) or POCOES_CRAFTADAS.get(nome)
-  return f'+{pocao.valor} {pocao.efeito}' if pocao else ''
-
-
-def _tela_inventario(personagem):
-  while True:
-    nomes_pocoes = [nome for nome, qtd in personagem.pocoes.items() if qtd > 0]
-    nomes_itens = [nome for nome, qtd in personagem.inventario.items() if qtd > 0]
-    opcoes = [f'Poção de {nome} x{personagem.pocoes[nome]} ({_descricao_pocao(nome)})'
-              for nome in nomes_pocoes]
-    opcoes += [f'{nome} x{personagem.inventario[nome]}'
-               + (f' ({ITENS_CONSUMIVEIS[nome].descricao})' if nome in ITENS_CONSUMIVEIS else '')
-               for nome in nomes_itens]
-    if not opcoes:
-      limpar_tela()
-      print(f'{Cor.CIANO}Seu inventário de itens está vazio.{Cor.RESET}')
-      input('Enter para continuar...')
-      return
-    escolha = menu_padrao(f'{equipamento.resumo_status(personagem)}\n\nInventário', opcoes)
-    if escolha is None:
-      return
-    if escolha < len(nomes_pocoes):
-      inventario.usar_pocao(personagem, nomes_pocoes[escolha], em_batalha=False, escrever=print)
-    else:
-      inventario.usar_item_consumivel(personagem, nomes_itens[escolha - len(nomes_pocoes)], print)
-    input('Enter para continuar...')
-
-
 def _tela_loja(personagem):
   ecrans = [loja.loja_acessorios, loja.loja_itens_consumiveis, loja.loja_comidas, loja.loja_pocoes,
             loja.loja_equipamentos, loja.loja_armaduras, loja.loja_ofertas_do_dia]
@@ -303,7 +273,7 @@ def _tela_dungeon(personagem, dungeon_id, slots):
         _processar_morte_se_necessario(personagem)
         return
     elif acao == 'Inventário':
-      _tela_inventario(personagem)
+      cidade.tela_inventario(personagem)
     elif acao == 'Descer de andar':
       personagem.andar_atual[dungeon_id] -= 1
     elif acao == 'Subir de andar':
@@ -337,11 +307,36 @@ def _entrar_cratera_callback(personagem, escrever, aguardar, limpar):
   return 'cratera'
 
 
+def _entrar_torre_arcana_callback(personagem, escrever, aguardar, limpar):
+  if not personagem.torre_arcana_liberada:
+    limpar()
+    escrever(f'{Cor.CINZA}A Torre Arcana está lacrada — só quem provou seu valor na dungeon '
+             f'de Habusken consegue passar da entrada.{Cor.RESET}')
+    aguardar()
+    return None
+  return 'torre_arcana'
+
+
+def _entrar_abismo_submerso_callback(personagem, escrever, aguardar, limpar):
+  if not personagem.abismo_submerso_liberado:
+    limpar()
+    escrever(f'{Cor.CINZA}As docas que levam ao Abismo Submerso estão fechadas — '
+             f'derrote O Arquiteto na Torre Arcana primeiro.{Cor.RESET}')
+    aguardar()
+    return None
+  return 'abismo_submerso'
+
+
 def _eventos_vethgard():
   return {
-    'S': mundo.falar_com_npc_e_sidequest('arquivista_sorel', 'cristal_para_sorel'),
-    'M': mundo.falar_com_npc_e_sidequest('orfao_mikel', 'lenco_da_familia'),
     'G': mundo.falar_com_npc('guarda_vethgard'),
+    'W': mundo.falar_com_npc_e_sidequest('capita_wren', 'ameaca_gelada'),
+    'R': mundo.falar_com_npc_e_sidequest('estudioso_aldric', 'eco_do_abismo'),
+    'L': lambda p, e, a, l: loja.loja_acessorios_vethgard(p) or None,
+    'C': lambda p, e, a, l: cidade.tela_curandeira(p) or None,
+    'T': lambda p, e, a, l: cidade.tela_mestre_vethgard(p) or None,
+    'A': _entrar_torre_arcana_callback,
+    'B': _entrar_abismo_submerso_callback,
     '6': mundo.abrir_bau('vethgard_bau_1', 'pocao', 'Vida', 1),
   }
 
@@ -349,6 +344,8 @@ def _eventos_vethgard():
 def _eventos_ilyrath():
   return {
     'T': mundo.falar_com_npc_e_sidequest('velho_caminhante', 'ecos_da_cantiga'),
+    'S': mundo.falar_com_npc_e_sidequest('arquivista_sorel', 'cristal_para_sorel'),
+    'M': mundo.falar_com_npc_e_sidequest('orfao_mikel', 'lenco_da_familia'),
     'V': _entrar_vethgard_callback,
     'C': _entrar_cratera_callback,
     '1': mundo.abrir_bau('ilyrath_bau_1', 'moedas', '', 80),
@@ -359,8 +356,26 @@ def _eventos_ilyrath():
   }
 
 
-def _tela_vethgard(personagem):
-  mundo.explorar_mapa(personagem, MAPA_VETHGARD, _eventos_vethgard(), 'Vethgard')
+def _tela_vethgard(personagem, slots):
+  eventos = _eventos_vethgard()
+  while True:
+    _talvez_autosalvar(personagem, slots)
+    resultado = mundo.explorar_mapa(personagem, MAPA_VETHGARD, eventos, 'Vethgard')
+    if resultado is None:
+      return
+    if resultado == 'torre_arcana':
+      _tela_dungeon(personagem, 'torre_arcana', slots)
+      if 'O Arquiteto' in personagem.chefes_derrotados:
+        personagem.abismo_submerso_liberado = True
+    elif resultado == 'abismo_submerso':
+      _tela_dungeon(personagem, 'abismo_submerso', slots)
+      if 'Kraken Ancestral' in personagem.chefes_derrotados:
+        personagem.cratera_vhalos_liberado = True
+        if not personagem.abismo_epilogo_mostrado:
+          personagem.abismo_epilogo_mostrado = True
+          limpar_tela()
+          print(EPILOGO_ABISMO)
+          input('\nAperte Enter para continuar...')
 
 
 def _tela_mapa_mundo(personagem, slots):
@@ -372,7 +387,7 @@ def _tela_mapa_mundo(personagem, slots):
     if resultado is None:
       return
     if resultado == 'vethgard':
-      _tela_vethgard(personagem)
+      _tela_vethgard(personagem, slots)
     elif resultado == 'cratera':
       _tela_dungeon(personagem, 'cratera_vhalos', slots)
       if 'Vashtar, o Rei Cinza' in personagem.chefes_derrotados and not personagem.historia_concluida:
@@ -387,12 +402,7 @@ def _opcoes_e_secoes_vila(personagem):
   jogador achou pior: tinha que entrar e lembrar em qual grupo cada coisa
   estava). `secoes` só organiza visualmente com cabeçalhos coloridos, sem
   adicionar nenhum nível de navegação — sobe/desce passa por cima deles."""
-  opcoes = ['Dungeon de Habusken']
-  if personagem.torre_arcana_liberada:
-    opcoes.append('Torre Arcana')
-  if personagem.abismo_submerso_liberado:
-    opcoes.append('Abismo Submerso')
-  opcoes += ['Mapa do Mundo', 'Guilda']
+  opcoes = ['Dungeon de Habusken', 'Mapa do Mundo', 'Guilda']
   secoes = {0: 'AVENTURA'}
 
   secoes[len(opcoes)] = 'CIDADE'
@@ -400,7 +410,7 @@ def _opcoes_e_secoes_vila(personagem):
              'Mestre de Habusken', 'Conversar com o Ancião', 'Casa']
 
   secoes[len(opcoes)] = 'PERSONAGEM'
-  opcoes += ['Personagem', 'Status', 'Desbloquear Habilidades']
+  opcoes += ['Personagem', 'Status', 'Inventário', 'Desbloquear Habilidades']
   if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
     opcoes.append('Especialização')
 
@@ -433,19 +443,6 @@ def _executar_acao_vila(acao, personagem, slots):
     _tela_dungeon(personagem, 'habusken', slots)
     if 'Dragão Ancião de Habusken' in personagem.chefes_derrotados:
       personagem.torre_arcana_liberada = True
-  elif acao == 'Torre Arcana':
-    _tela_dungeon(personagem, 'torre_arcana', slots)
-    if 'O Arquiteto' in personagem.chefes_derrotados:
-      personagem.abismo_submerso_liberado = True
-  elif acao == 'Abismo Submerso':
-    _tela_dungeon(personagem, 'abismo_submerso', slots)
-    if 'Kraken Ancestral' in personagem.chefes_derrotados:
-      personagem.cratera_vhalos_liberado = True
-      if not personagem.abismo_epilogo_mostrado:
-        personagem.abismo_epilogo_mostrado = True
-        limpar_tela()
-        print(EPILOGO_ABISMO)
-        input('\nAperte Enter para continuar...')
   elif acao == 'Mapa do Mundo':
     _tela_mapa_mundo(personagem, slots)
   elif acao == 'Personagem':
@@ -456,6 +453,8 @@ def _executar_acao_vila(acao, personagem, slots):
     cidade.tela_desbloquear_habilidades(personagem)
   elif acao == 'Status':
     cidade.tela_status(personagem)
+  elif acao == 'Inventário':
+    cidade.tela_inventario(personagem)
   elif acao == 'Tutorial':
     cidade.tela_tutorial(personagem)
   elif acao == 'Guilda':

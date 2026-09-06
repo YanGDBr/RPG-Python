@@ -9,6 +9,50 @@ def _personagem():
   return Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
 
 
+def test_tela_inventario_mostra_pocoes_itens_materiais_e_comidas():
+  """Regressão: o jogador não tinha como ver os materiais de crafting em
+  lugar nenhum — a tela de inventário só mostrava poções e itens comuns."""
+  personagem = _personagem()
+  personagem.pocoes['Vida'] = 1
+  personagem.adicionar_item('Perfume Anti-Monstro')
+  personagem.adicionar_material('Gosma de Slime', 3)
+  opcoes_vistas = []
+
+  cidade.tela_inventario(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=lambda _t, opcoes, **_k: opcoes_vistas.append(opcoes) or None,
+                          aguardar=lambda: None)
+
+  opcoes = opcoes_vistas[0]
+  assert any('vida' in o.lower() for o in opcoes)
+  assert any('monstro' in o.lower() for o in opcoes)
+  assert any('gosma de slime' in o.lower() for o in opcoes)
+  assert any('bife' in o.lower() for o in opcoes)  # comida inicial
+
+
+def test_tela_inventario_selecionar_material_nao_consome_nada():
+  personagem = _personagem()
+  personagem.adicionar_material('Gosma de Slime', 3)
+  respostas = iter([0, None])  # seleciona o único material, depois sai
+
+  cidade.tela_inventario(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=lambda _t, _o, **_k: next(respostas),
+                          aguardar=lambda: None)
+
+  assert personagem.materiais['Gosma de Slime'] == 3
+
+
+def test_tela_inventario_vazia_mostra_aviso_e_nao_quebra():
+  personagem = _personagem()
+  personagem.comidas = {}  # sem nada mesmo, nem comida inicial
+  telas = []
+
+  cidade.tela_inventario(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=lambda titulo, *_a, **_k: telas.append(titulo) or None,
+                          aguardar=lambda: None)
+
+  assert any('vazio' in t.lower() for t in telas)
+
+
 def test_tela_personagem_mostra_itens_especiais_quando_tem():
   """Documentos de identidade e itens de sidequest ficam fora do inventário
   normal de propósito — sem isso, o jogador não teria como ver que os tem."""
@@ -55,6 +99,42 @@ def test_tela_personagem_agrupa_acoes_por_secao():
 
   secoes = secoes_vistas[0]
   assert {'ARMAS', 'ARMADURAS', 'ACESSÓRIOS — equipar', 'ACESSÓRIOS — desequipar'} <= set(secoes.values())
+
+
+def test_tela_desbloquear_habilidades_mostra_a_descricao():
+  """Regressão: o catálogo já tinha descrição pra toda habilidade, mas a
+  tela de compra nunca mostrava, só nível e preço."""
+  from rpg.dados.habilidades import HABILIDADES, HABILIDADES_DESBLOQUEAVEIS
+  personagem = _personagem()
+  personagem.nivel = 100
+  candidatas = HABILIDADES_DESBLOQUEAVEIS.get(personagem.classe, [])
+  opcoes_vistas = []
+
+  cidade.tela_desbloquear_habilidades(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, opcoes, **_k: opcoes_vistas.append(opcoes) or None,
+      aguardar=lambda: None)
+
+  primeira_habilidade = HABILIDADES[candidatas[0]]
+  assert primeira_habilidade.descricao in opcoes_vistas[0][0]
+
+
+def test_tela_equipar_habilidades_mostra_descricao_das_equipadas_e_disponiveis():
+  personagem = _personagem()
+  from rpg.dados.habilidades import HABILIDADES
+  personagem.habilidades_aprendidas = ['Investida', 'Corte Fatal', 'Espada Mágica', 'Golpe Duplo']
+  personagem.habilidades_equipadas = ['Investida', 'Corte Fatal', 'Espada Mágica']
+  opcoes_vistas = []
+
+  cidade.tela_equipar_habilidades(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, opcoes, **_k: opcoes_vistas.append(opcoes) or None,
+      aguardar=lambda: None)
+
+  opcoes = opcoes_vistas[0]
+  assert HABILIDADES['Investida'].descricao in opcoes[0]  # slot equipado
+  linha_golpe_duplo = next(o for o in opcoes if 'Golpe Duplo' in o)
+  assert HABILIDADES['Golpe Duplo'].descricao in linha_golpe_duplo  # disponível pra equipar
 
 
 def test_mestre_habusken_pausa_ao_rejeitar_jogador_sem_boss_derrotado():
@@ -172,6 +252,50 @@ def test_mestre_habusken_conta_acertos_com_resposta_separada_por_espaco(monkeypa
       aguardar=lambda: None, limpar=lambda: None)
 
   assert personagem.treinamento_habusken == 20  # 5 acertos x 4%
+
+
+def test_mestre_vethgard_concede_disciplina_ao_completar_treinamento(monkeypatch):
+  """Segunda cidade, segundo mestre: mesmo molde do de Habusken, mas concede
+  Poder e Sorte fixos (Disciplina) em vez de um bônus percentual de dano."""
+  from rpg.config import BONUS_DISCIPLINA_PODER, BONUS_DISCIPLINA_SORTE
+  personagem = _personagem()
+  personagem.moeda_cobre = 300
+  poder_antes, sorte_antes = personagem.poder, personagem.sorte
+
+  import itertools
+  letras_fixas = itertools.cycle('ABCDE')  # sempre a mesma sequência, toda rodada
+  monkeypatch.setattr(cidade.random, 'choice', lambda _seq: next(letras_fixas))
+  # 5 rodadas de treino (20% cada, acertando tudo) até completar 100%.
+  respostas_menu = iter([0, 0, 0, 0, 0, 1])
+
+  cidade.tela_mestre_vethgard(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, _o, **_k: next(respostas_menu),
+      entrada_texto=lambda _p: 'A B C D E', esperar=lambda _s: None,
+      aguardar=lambda: None, limpar=lambda: None)
+
+  assert personagem.treinamento_vethgard == 100
+  assert personagem.disciplina_vethgard is True
+  assert personagem.poder == poder_antes + BONUS_DISCIPLINA_PODER
+  assert personagem.sorte == sorte_antes + BONUS_DISCIPLINA_SORTE
+
+
+def test_mestre_vethgard_nao_concede_disciplina_duas_vezes(monkeypatch):
+  personagem = _personagem()
+  personagem.treinamento_vethgard = 100
+  personagem.disciplina_vethgard = True
+  personagem.poder = 999
+  personagem.moeda_cobre = 300
+  monkeypatch.setattr(cidade.random, 'choice', lambda _seq: 'A')
+  respostas_menu = iter([0, 1])
+
+  cidade.tela_mestre_vethgard(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, _o, **_k: next(respostas_menu),
+      entrada_texto=lambda _p: '', esperar=lambda _s: None,
+      aguardar=lambda: None, limpar=lambda: None)
+
+  assert personagem.poder == 999  # não concedeu de novo
 
 
 def test_personagem_mostra_equipamento_atual_mesmo_sem_nada_pra_trocar():

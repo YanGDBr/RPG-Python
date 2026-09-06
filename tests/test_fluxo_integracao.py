@@ -149,10 +149,13 @@ def _caminho_ate_evento(mapa, eventos, alvo):
   raise AssertionError(f'"{alvo}" inalcançável — mapa do mundo quebrado')
 
 
-def test_mundo_aberto_bloqueia_cratera_e_permite_visitar_vethgard():
+def test_mundo_aberto_bloqueia_cratera_e_permite_visitar_vethgard(monkeypatch):
   """Simula um jogador andando pelo mapa de Ilyrath de verdade: tenta entrar
   na Cratera de Vhalos antes de liberar (deve ser barrado), depois viaja até
   Vethgard e conversa com um NPC de lá."""
+  # sem isso, o diálogo real anima palavra por palavra com um sleep de
+  # verdade — a lógica continua sendo exercitada, só sem o atraso real.
+  monkeypatch.setattr(mundo.time, 'sleep', lambda *_a: None)
   personagem = Personagem(nome='HeroiTeste', classe='Cavaleiro', raca='Humano')
   mensagens = []
 
@@ -176,16 +179,18 @@ def test_mundo_aberto_bloqueia_cratera_e_permite_visitar_vethgard():
       limpar=lambda: None, aguardar=lambda: None)
   assert resultado == 'vethgard'
 
-  eventos_vethgard = {'S': mundo.falar_com_npc('arquivista_sorel'),
-                       'M': mundo.falar_com_npc('orfao_mikel'),
-                       'G': mundo.falar_com_npc('guarda_vethgard')}
-  caminho_sorel = iter(_caminho_ate_evento(MAPA_VETHGARD, eventos_vethgard, 'S') + ['esc'])
+  # 'S' (Arquivista Sorel) e 'M' (Órfão Mikel) moraram em Vethgard antes,
+  # mas se mudaram pra estrada de Ilyrath — a recompensa das sidequests deles
+  # era baixa demais pro nível que se chega em Vethgard (só depois de zerar
+  # a dungeon de Habusken inteira). 'G' (Guarda) continua em Vethgard.
+  eventos_vethgard = {'G': mundo.falar_com_npc('guarda_vethgard')}
+  caminho_guarda = iter(_caminho_ate_evento(MAPA_VETHGARD, eventos_vethgard, 'G') + ['esc'])
   mundo.explorar_mapa(
       personagem, MAPA_VETHGARD, eventos_vethgard, 'Vethgard',
-      escrever=mensagens.append, leitor_tecla=lambda: next(caminho_sorel),
+      escrever=mensagens.append, leitor_tecla=lambda: next(caminho_guarda),
       limpar=lambda: None, aguardar=lambda: None)
 
-  assert any('Arquivista Sorel' in m for m in mensagens)
+  assert any('Guarda de Vethgard' in m for m in mensagens)
 
 
 def test_vitoria_concede_recompensas_e_possivelmente_sobe_de_nivel():

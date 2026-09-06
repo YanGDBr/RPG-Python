@@ -78,6 +78,35 @@ ACESSORIOS = {
       'Cantil Encantado', 'A fome demora mais pra cair', 'fome_lenta', 2, preco=90),
 }
 
+# Acessórios de Vethgard — mesma família de efeitos da loja de Habusken, só
+# que com valores bem mais fortes (e preço mais alto), pra fazer sentido pra
+# quem já limpou a dungeon de Habusken inteira antes de conseguir chegar até
+# aqui a pé.
+ACESSORIOS_VETHGARD = {
+  'Colar do Labirinto Maior': Acessorio(
+      'Colar do Labirinto Maior', 'Aumenta bastante a chance de achar a sala do chefe', 'boss', 3, preco=250),
+  'Diadema da Vitalidade': Acessorio(
+      'Diadema da Vitalidade', 'Aumenta a vida e a mana máximas em 50', 'mana_vida', 50, preco=280),
+  'Anel de Fogo Ancestral': Acessorio(
+      'Anel de Fogo Ancestral', 'O inimigo começa a batalha em Queimadura por 5 turnos',
+      'queimadura_inicial', 5, preco=320),
+  'Bracelete da Fortuna Vethgardiana': Acessorio(
+      'Bracelete da Fortuna Vethgardiana', 'Aumenta a chance de crítico em 18%', 'critico', 18, preco=380),
+  'Couraça Espectral': Acessorio(
+      'Couraça Espectral', 'Reduz o dano recebido em 15%', 'reducao_dano', 15, preco=320),
+  'Botas do Vento Norte': Acessorio(
+      'Botas do Vento Norte', 'Aumenta a esquiva em 12 pontos', 'esquiva_flat', 12, preco=300),
+  'Colar do Tesouro Afundado': Acessorio(
+      'Colar do Tesouro Afundado', 'Aumenta as moedas ganhas em 22%', 'ouro_extra', 22, preco=380),
+  'Grimório de Vethgard': Acessorio(
+      'Grimório de Vethgard', 'Aumenta a experiência ganha em 18%', 'exp_extra', 18, preco=360),
+  'Anel Regenerativo Maior': Acessorio(
+      'Anel Regenerativo Maior', 'Regenera 5% da vida máxima por turno em batalha', 'regeneracao', 5, preco=280),
+  'Talismã do Devorador': Acessorio(
+      'Talismã do Devorador', 'Recupera 15% da vida máxima sempre que você derrota um inimigo',
+      'vida_ao_matar', 15, preco=320),
+}
+
 # Acessórios únicos — só obtidos derrotando o chefe correspondente, não são
 # vendidos em loja nenhuma. Cada chefe (menos os dois finais, que já davam
 # material de crafting) ganhou um efeito próprio pra ficar mais memorável.

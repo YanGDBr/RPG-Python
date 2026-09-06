@@ -22,7 +22,7 @@ MONSTROS = {
       drops_item=(('Presa de Lobo', 0.5),),
       descricoes_ataque=('O Lobo dá uma investida e te morde ferozmente', 'O Lobo te ataca com suas garras')),
   'Slime Gigante': MonstroBase(
-      nome='Slime Gigante', vida_maxima=150, ataque_min=20, ataque_max=25, nivel=10,
+      nome='Slime Gigante', vida_maxima=900, ataque_min=20, ataque_max=25, nivel=10,
       fraquezas=('Fogo',), resistencias=('Fisico',), chefe=True,
       exp_min=30, exp_max=50, moedas_min=20, moedas_max=35,
       drops_item=(('Gosma de Slime', 1.0),),
@@ -49,7 +49,7 @@ MONSTROS = {
       descricoes_ataque=('O Kobold Mago conjura uma bola de fogo em você [Queimadura]',
                           'O Kobold Mago conjura um míssil mágico em sua direção')),
   'Goblin Xamã': MonstroBase(
-      nome='Goblin Xamã', vida_maxima=170, ataque_min=30, ataque_max=40, nivel=15,
+      nome='Goblin Xamã', vida_maxima=1020, ataque_min=30, ataque_max=40, nivel=15,
       elemento='Fogo', fraquezas=('Gelo',), resistencias=('Fogo',), chefe=True,
       exp_min=50, exp_max=80, moedas_min=40, moedas_max=80,
       drops_item=(('Cristal Arcano', 0.3),),
@@ -75,7 +75,7 @@ MONSTROS = {
       exp_min=65, exp_max=90, moedas_min=50, moedas_max=80,
       descricoes_ataque=('O Orc Guerreiro dá um machadada', 'O Orc Guerreiro avança com o escudo')),
   'Orc Chefe': MonstroBase(
-      nome='Orc Chefe', vida_maxima=400, ataque_min=55, ataque_max=70, nivel=22,
+      nome='Orc Chefe', vida_maxima=2400, ataque_min=55, ataque_max=70, nivel=22,
       fraquezas=('Eletrico',), resistencias=('Fisico',), chefe=True,
       exp_min=100, exp_max=150, moedas_min=90, moedas_max=140,
       drops_item=(('Presa de Lobo', 0.4),),
@@ -104,7 +104,7 @@ MONSTROS = {
       descricoes_ataque=('O Cavaleiro Amaldiçoado desfere um golpe de espada amaldiçoada',
                           'O Cavaleiro Amaldiçoado avança montado em seu corcel espectral')),
   'Cavaleiro da Morte': MonstroBase(
-      nome='Cavaleiro da Morte', vida_maxima=550, ataque_min=75, ataque_max=95, nivel=28,
+      nome='Cavaleiro da Morte', vida_maxima=3300, ataque_min=75, ataque_max=95, nivel=28,
       elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio', 'Fisico'), chefe=True,
       exp_min=140, exp_max=190, moedas_min=120, moedas_max=180,
       drops_item=(('Ectoplasma', 0.6), ('Cristal Arcano', 0.25)),
@@ -134,7 +134,7 @@ MONSTROS = {
       descricoes_ataque=('O Golem de Obsidiana desfere um golpe de lava incandescente',
                           'O Golem de Obsidiana esmaga o chão, espalhando cacos afiados')),
   'Dragão Ancião de Habusken': MonstroBase(
-      nome='Dragão Ancião de Habusken', vida_maxima=800, ataque_min=100, ataque_max=130, nivel=35,
+      nome='Dragão Ancião de Habusken', vida_maxima=4800, ataque_min=100, ataque_max=130, nivel=35,
       elemento='Fogo', fraquezas=('Gelo',), resistencias=('Fogo', 'Fisico'), chefe=True,
       tem_fase_furiosa=True,
       exp_min=250, exp_max=340, moedas_min=220, moedas_max=320,
@@ -164,7 +164,7 @@ MONSTROS = {
       descricoes_ataque=('O Grimório Vivo recita um feitiço amaldiçoado',
                           'O Grimório Vivo bate as páginas afiadas contra você')),
   'Arquimago Renegado': MonstroBase(
-      nome='Arquimago Renegado', vida_maxima=700, ataque_min=110, ataque_max=140, nivel=38,
+      nome='Arquimago Renegado', vida_maxima=4200, ataque_min=110, ataque_max=140, nivel=38,
       elemento='Eletrico', fraquezas=('Fisico',), resistencias=('Eletrico', 'Sombrio'), chefe=True,
       exp_min=280, exp_max=360, moedas_min=230, moedas_max=330,
       drops_item=(('Cristal Arcano', 0.7),),
@@ -192,7 +192,7 @@ MONSTROS = {
       descricoes_ataque=('O Guardião Espectral atravessa sua defesa',
                           'O Guardião Espectral solta um lamento gélido')),
   'Guardiã da Torre': MonstroBase(
-      nome='Guardiã da Torre', vida_maxima=850, ataque_min=130, ataque_max=160, nivel=43,
+      nome='Guardiã da Torre', vida_maxima=5100, ataque_min=130, ataque_max=160, nivel=43,
       elemento='Gelo', fraquezas=('Fogo',), resistencias=('Gelo', 'Sombrio'), chefe=True,
       exp_min=320, exp_max=400, moedas_min=260, moedas_max=360,
       drops_item=(('Cristal Arcano', 0.7),),
@@ -220,7 +220,7 @@ MONSTROS = {
       descricoes_ataque=('O Espectro do Vazio abre uma fenda de escuridão pura',
                           'O Espectro do Vazio sussurra e drena sua força vital')),
   'O Arquiteto': MonstroBase(
-      nome='O Arquiteto', vida_maxima=1200, ataque_min=150, ataque_max=190, nivel=50,
+      nome='O Arquiteto', vida_maxima=7200, ataque_min=150, ataque_max=190, nivel=50,
       elemento='Sombrio', fraquezas=('Fogo', 'Eletrico'), resistencias=('Sombrio', 'Fisico'), chefe=True,
       tem_fase_furiosa=True,
       exp_min=600, exp_max=800, moedas_min=500, moedas_max=700,
@@ -250,7 +250,7 @@ MONSTROS = {
       descricoes_ataque=('A Enguia Elétrica solta uma descarga que percorre a água [Paralisia]',
                           'A Enguia Elétrica dá uma investida rápida e certeira')),
   'Leviatã Menor': MonstroBase(
-      nome='Leviatã Menor', vida_maxima=1400, ataque_min=190, ataque_max=220, nivel=56,
+      nome='Leviatã Menor', vida_maxima=8400, ataque_min=190, ataque_max=220, nivel=56,
       elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fogo', 'Fisico'), chefe=True,
       efeito_aplicado='Sangramento', turnos_efeito_aplicado=3,
       exp_min=650, exp_max=850, moedas_min=550, moedas_max=750,
@@ -281,7 +281,7 @@ MONSTROS = {
       descricoes_ataque=('O Guardião de Coral avança como uma muralha viva',
                           'O Guardião de Coral dispara farpas de coral endurecido')),
   'Rainha das Profundezas': MonstroBase(
-      nome='Rainha das Profundezas', vida_maxima=1700, ataque_min=220, ataque_max=250, nivel=65,
+      nome='Rainha das Profundezas', vida_maxima=10200, ataque_min=220, ataque_max=250, nivel=65,
       elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fogo', 'Fisico'), chefe=True,
       efeito_aplicado='Paralisia', turnos_efeito_aplicado=1,
       exp_min=750, exp_max=950, moedas_min=650, moedas_max=850,
@@ -310,7 +310,7 @@ MONSTROS = {
       descricoes_ataque=('O Golem de Coral Negro desfere um golpe capaz de rachar rochas',
                           'O Golem de Coral Negro avança arrastando fragmentos afiados')),
   'Kraken Ancestral': MonstroBase(
-      nome='Kraken Ancestral', vida_maxima=2200, ataque_min=260, ataque_max=320, nivel=75,
+      nome='Kraken Ancestral', vida_maxima=13200, ataque_min=260, ataque_max=320, nivel=75,
       elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fogo', 'Fisico', 'Sombrio'), chefe=True,
       tem_fase_furiosa=True,
       efeito_aplicado='Paralisia', turnos_efeito_aplicado=2,
@@ -340,7 +340,7 @@ MONSTROS = {
       descricoes_ataque=('O Golem de Cinzas desmorona sobre você e se reforma em seguida',
                           'O Golem de Cinzas solta uma nuvem de cinza que arde nos olhos')),
   'O Consumido': MonstroBase(
-      nome='O Consumido', vida_maxima=2400, ataque_min=260, ataque_max=290, nivel=49,
+      nome='O Consumido', vida_maxima=14400, ataque_min=260, ataque_max=290, nivel=49,
       elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio', 'Fisico'), chefe=True,
       tem_investida_especial=True,
       efeito_aplicado='Vulnerabilidade', turnos_efeito_aplicado=3,
@@ -357,7 +357,7 @@ MONSTROS = {
       descricoes_ataque=('O Guarda Cinza ataca em silêncio absoluto, como se nem respirasse',
                           'O Guarda Cinza ergue uma lâmina cinzenta que não reflete luz nenhuma')),
   'Vashtar, o Rei Cinza': MonstroBase(
-      nome='Vashtar, o Rei Cinza', vida_maxima=3000, ataque_min=280, ataque_max=350, nivel=50,
+      nome='Vashtar, o Rei Cinza', vida_maxima=18000, ataque_min=280, ataque_max=350, nivel=50,
       elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio', 'Fisico'), chefe=True,
       tem_investida_especial=True, tem_fase_furiosa=True,
       efeito_aplicado='Vulnerabilidade', turnos_efeito_aplicado=3,

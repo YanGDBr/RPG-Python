@@ -46,14 +46,20 @@ def _bloco(y0, x0, y1, x1):
 # --------------------------------------------------------- Estrada (Ilyrath)
 # Liga a Vila Habusken (entrada, lado esquerdo) a Vethgard ('V', lado
 # direito) e à Cratera de Vhalos ('C', ramo ao norte — bloqueado até se ter o
-# Selo de Vethgard). 'T' é o Velho Caminhante (também dá uma sidequest).
-# '1'/'2' são baús, '3'/'4'/'5' são itens largados no chão.
+# Selo de Vethgard). 'T' é o Velho Caminhante, 'S' é a Arquivista Sorel e 'M'
+# é o Órfão Mikel — os dois últimos ficavam dentro de Vethgard, mas a
+# recompensa das sidequests deles é baixa demais pro nível que se chega lá
+# (só depois de zerar a dungeon de Habusken inteira) — fazem mais sentido
+# aqui, ainda no início da estrada. '1'/'2' são baús, '3'/'4'/'5' são itens
+# largados no chão.
 ILYRATH_OBSTACULOS = (
     _bloco(7, 14, 8, 15) + _bloco(13, 17, 14, 18) + _bloco(6, 25, 7, 25)
     + _bloco(3, 22, 3, 24))
 ILYRATH_FLORESTA = _bloco(4, 18, 6, 19) + _bloco(10, 28, 12, 29)
 ILYRATH_PONTOS = {
   (9, 8): 'T',    # Velho Caminhante
+  (5, 5): 'S',    # Arquivista Sorel (sidequest)
+  (15, 30): 'M',  # Órfão Mikel (sidequest)
   (4, 12): '1',   # baú
   (13, 22): '2',  # baú
   (14, 11): '3',  # item: material
@@ -68,16 +74,27 @@ MAPA_ILYRATH = _construir_mapa_aberto(
 
 
 # ------------------------------------------------------------------ Vethgard
-# 'S' = Arquivista Sorel (sidequest) — 'M' = Órfão Mikel (recebe a entrega da
-# sidequest do Velho Caminhante) — 'G' = Guarda de Vethgard. '6' é um baú.
+# Segunda cidade de verdade (não só um punhado de NPCs): tem sua própria loja
+# ('L', acessórios mais fortes), curandeira ('C'), mestre de treinamento
+# ('T', concede Disciplina em vez de Etén), e é daqui que se entra na Torre
+# Arcana ('A') e no Abismo Submerso ('B') — as duas dungeons "do meio do
+# jogo" saíram do menu de Habusken pra cá, fazendo mais sentido narrativo.
+# 'W' é a Capitã Wren e 'R' o Estudioso Aldric (sidequests de recompensa bem
+# maior — só se chega em Vethgard depois de zerar Habusken inteira). 'G'
+# continua sendo o Guarda de Vethgard (só diálogo). '6' é um baú.
 # Sair (Esc) devolve o jogador ao mapa de Ilyrath.
-VETHGARD_OBSTACULOS = _bloco(4, 10, 5, 11) + _bloco(10, 16, 11, 17)
+VETHGARD_OBSTACULOS = _bloco(6, 13, 7, 14) + _bloco(10, 24, 11, 25) + _bloco(3, 26, 4, 26)
 VETHGARD_PONTOS = {
-  (5, 20): 'S',
-  (11, 8): 'M',
-  (7, 27): 'G',
-  (13, 13): '6',
+  (8, 4): 'G',    # Guarda de Vethgard
+  (4, 10): 'L',   # Loja de Vethgard
+  (12, 10): 'C',  # Curandeira
+  (4, 20): 'T',   # Mestre de Vethgard
+  (8, 16): 'W',   # Capitã Wren (sidequest)
+  (12, 22): 'R',  # Estudioso Aldric (sidequest)
+  (2, 30): 'A',   # -> Torre Arcana
+  (14, 30): 'B',  # -> Abismo Submerso
+  (4, 30): '6',   # baú
 }
 MAPA_VETHGARD = _construir_mapa_aberto(
-    largura=31, altura=15, entrada=(7, 1),
+    largura=37, altura=17, entrada=(8, 1),
     obstaculos=VETHGARD_OBSTACULOS, pontos=VETHGARD_PONTOS)

@@ -152,21 +152,16 @@ def test_importar_backup_ui_confirma_e_recarrega_slots(monkeypatch, tmp_path):
   assert resultado is slots_novos
 
 
-def test_inventario_mostra_descricao_de_pocoes_e_itens(monkeypatch):
+def test_dungeon_e_vila_usam_o_inventario_de_cidade(monkeypatch):
+  """A tela de inventário virou `cidade.tela_inventario` (ganhou materiais e
+  comidas, e passou a aparecer também na vila, não só dentro da dungeon)."""
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
-  personagem.pocoes['Vida'] = 1
-  personagem.adicionar_item('Perfume Anti-Monstro')
-  opcoes_vistas = []
+  chamadas = []
+  monkeypatch.setattr(jogo.cidade, 'tela_inventario', lambda *_a, **_k: chamadas.append(1))
 
-  def _fake_menu(_titulo, opcoes, **_kw):
-    opcoes_vistas.append(opcoes)
-    return None
+  jogo._executar_acao_vila('Inventário', personagem, slots=[None, None, None])
 
-  monkeypatch.setattr(jogo, 'menu_padrao', _fake_menu)
-  jogo._tela_inventario(personagem)
-
-  assert any('vida' in o.lower() for o in opcoes_vistas[0])
-  assert any('monstro' in o.lower() for o in opcoes_vistas[0])
+  assert chamadas == [1]
 
 
 def test_entrar_cratera_bloqueado_antes_de_liberar():
@@ -224,16 +219,121 @@ def test_entrar_vethgard_com_selo_de_habusken_libera_passagem():
   assert resultado == 'vethgard'
 
 
+def test_entrar_torre_arcana_bloqueada_sem_liberar():
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  mensagens = []
+
+  resultado = jogo._entrar_torre_arcana_callback(
+      personagem, mensagens.append, lambda: None, lambda: None)
+
+  assert resultado is None
+  assert any('Torre Arcana' in m for m in mensagens)
+
+
+def test_entrar_torre_arcana_liberada_retorna_sinal():
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.torre_arcana_liberada = True
+
+  resultado = jogo._entrar_torre_arcana_callback(
+      personagem, lambda *_a, **_k: None, lambda: None, lambda: None)
+
+  assert resultado == 'torre_arcana'
+
+
+def test_entrar_abismo_submerso_bloqueado_sem_liberar():
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  mensagens = []
+
+  resultado = jogo._entrar_abismo_submerso_callback(
+      personagem, mensagens.append, lambda: None, lambda: None)
+
+  assert resultado is None
+  assert any('Abismo Submerso' in m for m in mensagens)
+
+
+def test_entrar_abismo_submerso_liberado_retorna_sinal():
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.abismo_submerso_liberado = True
+
+  resultado = jogo._entrar_abismo_submerso_callback(
+      personagem, lambda *_a, **_k: None, lambda: None, lambda: None)
+
+  assert resultado == 'abismo_submerso'
+
+
+def test_torre_arcana_e_abismo_submerso_nao_aparecem_mais_na_vila_de_habusken():
+  """As duas dungeons se mudaram pro mapa de Vethgard — não fazia sentido
+  narrativo elas continuarem só no menu de Habusken."""
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.torre_arcana_liberada = True
+  personagem.abismo_submerso_liberado = True
+
+  opcoes, _secoes = jogo._opcoes_e_secoes_vila(personagem)
+
+  assert 'Torre Arcana' not in opcoes
+  assert 'Abismo Submerso' not in opcoes
+
+
+def test_tela_vethgard_entra_na_torre_arcana_e_libera_abismo_submerso(monkeypatch):
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.torre_arcana_liberada = True
+
+  respostas_mapa = iter(['torre_arcana', None])
+  monkeypatch.setattr(jogo.mundo, 'explorar_mapa', lambda *_a, **_k: next(respostas_mapa))
+
+  def _fake_tela_dungeon(p, _dungeon_id, _slots):
+    p.chefes_derrotados.append('O Arquiteto')
+
+  monkeypatch.setattr(jogo, '_tela_dungeon', _fake_tela_dungeon)
+  monkeypatch.setattr(jogo, '_talvez_autosalvar', lambda *_a, **_k: None)
+
+  jogo._tela_vethgard(personagem, slots=[None, None, None])
+
+  assert personagem.abismo_submerso_liberado is True
+
+
+def test_tela_vethgard_derrotar_kraken_libera_cratera_e_mostra_epilogo_uma_vez(monkeypatch):
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.abismo_submerso_liberado = True
+
+  respostas_mapa = iter(['abismo_submerso', None])
+  monkeypatch.setattr(jogo.mundo, 'explorar_mapa', lambda *_a, **_k: next(respostas_mapa))
+
+  def _fake_tela_dungeon(p, _dungeon_id, _slots):
+    p.chefes_derrotados.append('Kraken Ancestral')
+
+  monkeypatch.setattr(jogo, '_tela_dungeon', _fake_tela_dungeon)
+  monkeypatch.setattr(jogo, '_talvez_autosalvar', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo, 'limpar_tela', lambda: None)
+  monkeypatch.setattr('builtins.input', lambda *_a, **_k: '')
+  mensagens = []
+  monkeypatch.setattr('builtins.print', lambda *args, **_k: mensagens.append(' '.join(str(a) for a in args)))
+
+  jogo._tela_vethgard(personagem, slots=[None, None, None])
+
+  assert personagem.cratera_vhalos_liberado is True
+  assert personagem.abismo_epilogo_mostrado is True
+  assert any('Abismo Submerso' in m or 'águas' in m.lower() for m in mensagens)
+
+
 def test_eventos_do_mundo_aberto_referenciam_npcs_e_sidequests_validos(monkeypatch):
   """Regressão contra erro de digitação: cada NPC/sidequest usado nos mapas
   do mundo aberto só quebraria em tempo real, ao pisar naquela célula, sem
   esse teste — aqui é pego na hora. `menu_padrao` é mockado porque os
   eventos de NPC com sidequest usam o menu de setas de verdade por padrão
-  (travaria esperando teclado)."""
+  (travaria esperando teclado); `mostrar_falas` é mockado porque senão anima
+  o diálogo palavra por palavra de verdade (real, mas deixaria o teste lento
+  sem trazer nenhuma cobertura a mais)."""
   from rpg.dados.npcs import NPCS
   from rpg.dados.sidequests import SIDEQUESTS
 
   monkeypatch.setattr('rpg.sistemas.mundo.menu_padrao', lambda *_a, **_k: None)
+  monkeypatch.setattr('rpg.sistemas.mundo.mostrar_falas', lambda *_a, **_k: None)
+  # os eventos de "prédio" de Vethgard (loja/curandeira/mestre) abrem telas de
+  # verdade, que por padrão usam menu/input reais — mockadas aqui também.
+  monkeypatch.setattr(jogo.loja, 'loja_acessorios_vethgard', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo.cidade, 'tela_curandeira', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo.cidade, 'tela_mestre_vethgard', lambda *_a, **_k: None)
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   for eventos in (jogo._eventos_ilyrath(), jogo._eventos_vethgard()):
     for caractere, callback in eventos.items():
@@ -243,9 +343,11 @@ def test_eventos_do_mundo_aberto_referenciam_npcs_e_sidequests_validos(monkeypat
 
   # nomes usados nas fábricas de evento precisam bater com os catálogos —
   # checagem direta, sem depender de nenhuma exceção ter estourado acima.
-  for chave_npc in ('arquivista_sorel', 'orfao_mikel', 'guarda_vethgard', 'velho_caminhante'):
+  for chave_npc in ('arquivista_sorel', 'orfao_mikel', 'guarda_vethgard', 'velho_caminhante',
+                     'capita_wren', 'estudioso_aldric'):
     assert chave_npc in NPCS
-  for sidequest_id in ('cristal_para_sorel', 'lenco_da_familia', 'ecos_da_cantiga'):
+  for sidequest_id in ('cristal_para_sorel', 'lenco_da_familia', 'ecos_da_cantiga',
+                        'ameaca_gelada', 'eco_do_abismo'):
     assert sidequest_id in SIDEQUESTS
 
 
@@ -334,6 +436,7 @@ def test_todas_as_opcoes_da_vila_sao_reconhecidas_por_executar_acao(monkeypatch)
   monkeypatch.setattr(jogo.cidade, 'tela_casa', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.cidade, 'tela_desbloquear_habilidades', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.cidade, 'tela_status', lambda *_a, **_k: chamadas.append(1))
+  monkeypatch.setattr(jogo.cidade, 'tela_inventario', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.cidade, 'tela_tutorial', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.cidade, 'tela_guilda', lambda *_a, **_k: chamadas.append(1))
   monkeypatch.setattr(jogo.cidade, 'tela_curandeira', lambda *_a, **_k: chamadas.append(1))

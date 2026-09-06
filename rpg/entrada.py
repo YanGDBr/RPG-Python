@@ -69,6 +69,17 @@ def ler_tecla():
   return _ler_tecla_unix()
 
 
+def tecla_disponivel():
+  """Checagem NÃO bloqueante: existe alguma tecla esperando pra ser lida?
+  Usado pra permitir pular a animação de "digitação" dos diálogos sem travar
+  esperando teclado quando não tem nada esperando pra pular."""
+  if os.name == 'nt':
+    import msvcrt
+    return msvcrt.kbhit()
+  import select
+  return bool(select.select([sys.stdin], [], [], 0)[0])
+
+
 def menu(titulo, opcoes, *, indice_inicial=0, com_voltar=True,
          leitor=None, escrever=None, limpar=None, secoes=None):
   """Menu navegável por setas/WASD. Devolve o índice escolhido, ou None

@@ -7,13 +7,31 @@ def test_aplicar_e_tick_queimadura():
   assert efeitos.tem_efeito(lista, 'Queimadura')
 
   mensagens = []
-  vida = efeitos.processar_efeitos_continuos(lista, 100, mensagens.append, 'Monstro')
-  assert vida == 100 - efeitos.DANO_POR_TURNO['Queimadura']
+  vida = efeitos.processar_efeitos_continuos(lista, 1000, mensagens.append, 'Monstro', vida_maxima=1000)
+  assert vida == 1000 - round(1000 * efeitos.DANO_POR_TURNO['Queimadura'] / 100)
   assert lista[0]['turnos'] == 1
 
-  vida = efeitos.processar_efeitos_continuos(lista, vida, mensagens.append, 'Monstro')
+  vida = efeitos.processar_efeitos_continuos(lista, vida, mensagens.append, 'Monstro', vida_maxima=1000)
   assert lista == []
   assert any('acabou' in m for m in mensagens)
+
+
+def test_dano_por_turno_e_percentual_da_vida_maxima_nao_valor_fixo():
+  """Regressão direta do pedido: 15 de dano fixo virava irrisório contra um
+  chefe de milhares de vida — agora escala com a vida máxima do alvo."""
+  lista_fraco = []
+  lista_tanque = []
+  efeitos.aplicar_efeito(lista_fraco, 'Veneno', 1)
+  efeitos.aplicar_efeito(lista_tanque, 'Veneno', 1)
+
+  vida_fraco = efeitos.processar_efeitos_continuos(
+      lista_fraco, 100, lambda *_a: None, 'Fraco', vida_maxima=100)
+  vida_tanque = efeitos.processar_efeitos_continuos(
+      lista_tanque, 5000, lambda *_a: None, 'Tanque', vida_maxima=5000)
+
+  dano_fraco = 100 - vida_fraco
+  dano_tanque = 5000 - vida_tanque
+  assert dano_tanque > dano_fraco * 10  # escala com a vida máxima, não fixo
 
 
 def test_paralisia_bloqueia_e_decrementa_ate_remover():

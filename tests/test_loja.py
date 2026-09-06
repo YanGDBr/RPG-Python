@@ -43,6 +43,25 @@ def test_loja_acessorios_vende_so_acessorios():
   assert personagem.acessorios_guardados == [CATALOGO_ACESSORIOS[0].nome]
 
 
+def test_loja_acessorios_vethgard_vende_catalogo_proprio_mais_forte():
+  """Segunda cidade, catálogo próprio — pedido do usuário de "mais
+  acessórios", só que exclusivos de Vethgard (mais fortes e mais caros)."""
+  from rpg.dados.lojas import CATALOGO_ACESSORIOS, CATALOGO_ACESSORIOS_VETHGARD
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.moeda_cobre = 100_000
+
+  respostas_menu = iter([0, None])
+  loja.loja_acessorios_vethgard(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, _o, **_k: next(respostas_menu), aguardar=lambda: None)
+
+  assert personagem.acessorios_guardados == [CATALOGO_ACESSORIOS_VETHGARD[0].nome]
+  # catálogos são realmente distintos — nenhum nome se repete entre os dois.
+  nomes_habusken = {a.nome for a in CATALOGO_ACESSORIOS}
+  nomes_vethgard = {a.nome for a in CATALOGO_ACESSORIOS_VETHGARD}
+  assert nomes_habusken.isdisjoint(nomes_vethgard)
+
+
 def test_loja_itens_consumiveis_vende_so_itens():
   from rpg.dados.lojas import CATALOGO_ITENS_CONSUMIVEIS
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')

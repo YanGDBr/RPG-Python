@@ -85,6 +85,11 @@ class Personagem:
   treinamento_habusken: int = 0
   eten: bool = False
 
+  # Treinamento equivalente, com o Mestre de Vethgard — mesmo molde
+  # (mini-jogo de memória, progresso 0-100%), mas concede outro bônus.
+  treinamento_vethgard: int = 0
+  disciplina_vethgard: bool = False
+
   local: str = 'inicio'
   morto: bool = False
 

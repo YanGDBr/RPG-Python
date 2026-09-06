@@ -5,6 +5,7 @@ import string
 import time
 
 from ..config import (ATORDOAMENTO_GANHO_POR_ACERTO_FRACO, ATORDOAMENTO_LIMIAR, BONUS_CANALIZACAO_MAXIMO_PERCENTUAL,
+                       BONUS_DISCIPLINA_PODER, BONUS_DISCIPLINA_SORTE,
                        BONUS_ETEN_PERCENTUAL, BONUS_POSTURA_DEFENSIVA_DANO, BONUS_POSTURA_DEFENSIVA_REDUCAO,
                        BONUS_POSTURA_OFENSIVA_DANO, BONUS_POSTURA_OFENSIVA_DANO_RECEBIDO,
                        CHANCE_CRITICO_MAXIMA, CHANCE_GRUPO_MONSTROS, CICLO_ELEMENTAL,
@@ -22,7 +23,7 @@ from ..dados.especializacoes import (ESPECIALIZACOES, ESPECIALIZACOES_POR_CLASSE
                                       NIVEL_MINIMO_ESPECIALIZACAO)
 from ..dados.habilidades import HABILIDADES, HABILIDADES_DESBLOQUEAVEIS
 from ..dados.itens import (ACESSORIOS, ACESSORIOS_UNICOS_POR_NOME, ARMADURAS, ARMADURAS_UNICAS, ARMAS,
-                            ARMAS_LENDARIAS)
+                            ARMAS_LENDARIAS, ITENS_CONSUMIVEIS, POCOES, POCOES_CRAFTADAS)
 from ..dados.receitas import RECEITAS
 from ..entrada import aguardar_leitura
 from ..entrada import menu as menu_padrao
@@ -197,7 +198,8 @@ def tela_equipar_habilidades(personagem, escrever=print, ler_acao=None, aguardar
     max_slots = _max_slots_habilidade(personagem)
     tem_slot_vazio = len(personagem.habilidades_equipadas) < max_slots
 
-    opcoes = [f'Slot {i + 1}: {Cor.BRANCO}{nome}{Cor.RESET} (equipada)'
+    opcoes = [f'Slot {i + 1}: {Cor.BRANCO}{nome}{Cor.RESET} (equipada) — '
+              f'{Cor.CINZA}{HABILIDADES[nome].descricao}{Cor.RESET}'
               for i, nome in enumerate(personagem.habilidades_equipadas)]
     disponiveis = [nome for nome in personagem.habilidades_aprendidas
                    if nome not in personagem.habilidades_equipadas]
@@ -208,7 +210,7 @@ def tela_equipar_habilidades(personagem, escrever=print, ler_acao=None, aguardar
       verbo = 'Equipar' if tem_slot_vazio else 'Trocar por'
       opcoes.append(f'{verbo}: {Cor.BRANCO}{nome}{Cor.RESET} '
                      f'({Cor.AZUL}{h.mana} mana{Cor.RESET}, {Cor.VERMELHO}{h.dano_base} dano base{Cor.RESET}'
-                     f'{efeito})')
+                     f'{efeito}) — {Cor.CINZA}{h.descricao}{Cor.RESET}')
 
     indice_comprar_slot = None
     if personagem.slots_habilidade_comprados < len(CUSTOS_SLOT_HABILIDADE):
@@ -742,7 +744,8 @@ def tela_desbloquear_habilidades(personagem, escrever=print, ler_acao=None, agua
       aguardar()
       return
     opcoes = [f'{Cor.BRANCO}{nome}{Cor.RESET} — nível {HABILIDADES[nome].nivel_minimo}, '
-              f'{HABILIDADES[nome].preco} cobres' for nome in candidatas]
+              f'{HABILIDADES[nome].preco} cobres — {Cor.CINZA}{HABILIDADES[nome].descricao}{Cor.RESET}'
+              for nome in candidatas]
     escolha = ler_acao(_titulo(personagem, 'Habilidades para desbloquear'), opcoes, indice_inicial=indice)
     if escolha is None:
       return
@@ -914,6 +917,66 @@ def tela_diario_conquistas(personagem, escrever=print, ler_acao=None, aguardar=N
   ler_acao('\n'.join(linhas), ['Voltar'], com_voltar=False)
 
 
+def _descricao_pocao(nome):
+  pocao = POCOES.get(nome) or POCOES_CRAFTADAS.get(nome)
+  return f'+{pocao.valor} {pocao.efeito}' if pocao else ''
+
+
+def tela_inventario(personagem, escrever=print, ler_acao=None, aguardar=None):
+  """Antes só existia dentro da dungeon, e nem mostrava os materiais de
+  crafting — o jogador não tinha como ver o que tinha guardado, mesmo tendo
+  passado a Bancada de Trabalho pedindo esses materiais como requisito."""
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  indice = 0
+  while True:
+    nomes_pocoes = [nome for nome, qtd in personagem.pocoes.items() if qtd > 0]
+    nomes_itens = [nome for nome, qtd in personagem.inventario.items() if qtd > 0]
+    nomes_materiais = [nome for nome, qtd in personagem.materiais.items() if qtd > 0]
+    nomes_comidas = [nome for nome, qtd in personagem.comidas.items() if qtd > 0]
+
+    opcoes = []
+    secoes = {}
+    if nomes_pocoes:
+      secoes[len(opcoes)] = 'POÇÕES'
+      opcoes += [f'Poção de {nome} x{personagem.pocoes[nome]} ({_descricao_pocao(nome)})'
+                 for nome in nomes_pocoes]
+    if nomes_itens:
+      secoes[len(opcoes)] = 'ITENS'
+      opcoes += [f'{nome} x{personagem.inventario[nome]}'
+                 + (f' ({ITENS_CONSUMIVEIS[nome].descricao})' if nome in ITENS_CONSUMIVEIS else '')
+                 for nome in nomes_itens]
+    total_selecionavel = len(opcoes)
+    if nomes_materiais:
+      secoes[len(opcoes)] = 'MATERIAIS (crafting — veja a Bancada de Trabalho)'
+      opcoes += [f'{nome} x{personagem.materiais[nome]}' for nome in nomes_materiais]
+    if nomes_comidas:
+      secoes[len(opcoes)] = 'COMIDAS'
+      opcoes += [f'{nome} x{personagem.comidas[nome]}' for nome in nomes_comidas]
+    total_ate_comidas = len(opcoes)
+
+    if not opcoes:
+      ler_acao(f'{equipamento.resumo_status(personagem)}\n\n'
+               f'{Cor.CIANO}Seu inventário está vazio.{Cor.RESET}', ['Voltar'], com_voltar=False)
+      return
+
+    escolha = ler_acao(f'{equipamento.resumo_status(personagem)}\n\nInventário', opcoes,
+                        indice_inicial=indice, secoes=secoes)
+    if escolha is None:
+      return
+    indice = escolha
+
+    if escolha < len(nomes_pocoes):
+      inventario.usar_pocao(personagem, nomes_pocoes[escolha], em_batalha=False, escrever=escrever)
+    elif escolha < total_selecionavel:
+      inventario.usar_item_consumivel(personagem, nomes_itens[escolha - len(nomes_pocoes)], escrever)
+    elif escolha < total_selecionavel + len(nomes_materiais):
+      escrever(f'{Cor.CINZA}Material de crafting — use na Bancada de Trabalho.{Cor.RESET}')
+    else:
+      inventario.comer(personagem, nomes_comidas[escolha - (total_ate_comidas - len(nomes_comidas))], escrever)
+    aguardar()
+
+
 def tela_bau(personagem, escrever=print, ler_acao=None, entrada_texto=input, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
@@ -977,6 +1040,50 @@ def tela_mestre_habusken(personagem, escrever=print, ler_acao=None, entrada_text
       personagem.eten = True
       escrever(f'{Cor.VERDE}Você concluiu o treinamento! Aprendeu Etén: '
                f'+{BONUS_ETEN_PERCENTUAL}% de dano em todos os ataques.{Cor.RESET}')
+    aguardar()
+
+
+def tela_mestre_vethgard(personagem, escrever=print, ler_acao=None, entrada_texto=input,
+                          esperar=None, aguardar=None, limpar=None):
+  """Segunda cidade, segundo mestre — mesmo molde do de Habusken (mini-jogo
+  de memória), mas a recompensa final é diferente: em vez de um bônus
+  percentual de dano, concede pontos fixos de Poder e Sorte de uma vez,
+  chamados aqui de "Disciplina"."""
+  ler_acao = ler_acao or menu_padrao
+  esperar = esperar or time.sleep
+  aguardar = aguardar or aguardar_leitura
+  limpar = limpar or limpar_tela
+  indice = 0
+  while True:
+    opcoes = [f'Treinar (60 cobres) — {personagem.treinamento_vethgard}% concluído', 'Voltar']
+    escolha = ler_acao(_titulo(personagem, 'Mestre de Vethgard'), opcoes, indice_inicial=indice)
+    if escolha is None or escolha == 1:
+      return
+    indice = escolha
+    if personagem.moeda_cobre < 60:
+      escrever(f'{Cor.VERMELHO}Você não tem 60 cobres.{Cor.RESET}')
+      aguardar()
+      continue
+    personagem.moeda_cobre -= 60
+
+    letras = [random.choice(string.ascii_uppercase) for _ in range(5)]
+    limpar()
+    escrever(f'{Cor.BRANCO}Decore a sequência de letras a seguir:{Cor.RESET}')
+    for letra in letras:
+      escrever(f'{Cor.AMARELO}{letra}{Cor.RESET}')
+      esperar(1)
+    esperar(3)
+    limpar()
+    resposta = entrada_texto('Digite as letras na ordem, separadas por espaço: -->')
+    acertos = sum(1 for certa, digitada in zip(letras, resposta.upper().split()) if certa == digitada)
+    personagem.treinamento_vethgard = min(100, personagem.treinamento_vethgard + acertos * 4)
+    escrever(f'{Cor.VERDE}Você acertou {acertos} de {len(letras)} letras!{Cor.RESET}')
+    if personagem.treinamento_vethgard >= 100 and not personagem.disciplina_vethgard:
+      personagem.disciplina_vethgard = True
+      personagem.poder += BONUS_DISCIPLINA_PODER
+      personagem.sorte += BONUS_DISCIPLINA_SORTE
+      escrever(f'{Cor.VERDE}Você concluiu o treinamento! Aprendeu Disciplina: '
+               f'+{BONUS_DISCIPLINA_PODER} Poder e +{BONUS_DISCIPLINA_SORTE} Sorte, permanentes.{Cor.RESET}')
     aguardar()
 
 

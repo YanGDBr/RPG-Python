@@ -53,6 +53,12 @@ PODER_DANO_PERCENTUAL_POR_PONTO = 2
 BONUS_ETEN_PERCENTUAL = 15
 LIMITE_DEBUFF_PERCENTUAL = 80     # bônus percentual nunca deixa o dano cair abaixo de 20% do base
 
+# Treinamento com o Mestre de Vethgard: diferente do Etén (bônus percentual
+# recalculado a cada golpe), a "Disciplina" concede pontos de status fixos
+# de uma vez só, na hora que o treinamento é concluído.
+BONUS_DISCIPLINA_PODER = 15
+BONUS_DISCIPLINA_SORTE = 15
+
 # Roda elemental genérica: cada elemento é forte contra o próximo da lista e
 # fraco contra o anterior — só entra em jogo quando o monstro NÃO já tem uma
 # fraqueza/resistência explícita pro elemento do ataque (essas continuam
@@ -197,3 +203,8 @@ CHANCE_ENCONTRO_SELVAGEM = 4
 
 # Fome no mundo aberto desgasta por PASSO de verdade (não só ao interagir com
 # algo), reaproveitando o mesmo limiar `ACOES_POR_DESGASTE_FOME` de dungeon.
+
+# Diálogo de NPC: cada palavra da fala aparece uma de cada vez, com esse
+# intervalo entre elas, pra dar impressão de que o NPC está falando de
+# verdade — Enter/Espaço a qualquer momento pula pro texto completo.
+VELOCIDADE_ANIMACAO_DIALOGO = 0.028

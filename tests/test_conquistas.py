@@ -73,3 +73,48 @@ def test_todos_os_chefes_e_bom_samaritano_exigem_conjunto_completo():
 
   assert CONQUISTAS['todos_os_chefes'].verificar(personagem)
   assert CONQUISTAS['bom_samaritano'].verificar(personagem)
+
+
+def test_diario_ganhou_muito_mais_conquistas():
+  """Pedido explícito do usuário: aumentar muito o diário."""
+  from rpg.dados.conquistas import CONQUISTAS
+  assert len(CONQUISTAS) >= 45
+
+
+def test_forjador_lendario_reconhece_arma_guardada_ou_equipada():
+  from rpg.dados.conquistas import CONQUISTAS
+  personagem = _personagem()
+  assert not CONQUISTAS['forjador_lendario'].verificar(personagem)
+
+  personagem.equipamentos_guardados = ['Espada do Dragão Ancião']
+  assert CONQUISTAS['forjador_lendario'].verificar(personagem)
+
+
+def test_colecionador_completo_exige_todos_os_13_acessorios_unicos():
+  from rpg.dados.conquistas import CONQUISTAS
+  from rpg.dados.itens import ACESSORIOS_UNICOS_POR_NOME
+  personagem = _personagem()
+  personagem.acessorios_guardados = list(ACESSORIOS_UNICOS_POR_NOME)[:-1]
+  assert not CONQUISTAS['colecionador_completo'].verificar(personagem)
+
+  personagem.acessorios_guardados = list(ACESSORIOS_UNICOS_POR_NOME)
+  assert CONQUISTAS['colecionador_completo'].verificar(personagem)
+
+
+def test_passaporte_completo_exige_os_dois_selos():
+  from rpg.dados.conquistas import CONQUISTAS
+  personagem = _personagem()
+  personagem.adicionar_item_especial('Selo de Habusken')
+  assert not CONQUISTAS['passaporte_completo'].verificar(personagem)
+
+  personagem.adicionar_item_especial('Selo de Vethgard')
+  assert CONQUISTAS['passaporte_completo'].verificar(personagem)
+
+
+def test_conquista_de_cada_especializacao_verifica_a_especializacao_certa():
+  from rpg.dados.conquistas import CONQUISTAS
+  personagem = _personagem()
+  personagem.especializacao = 'Berserker'
+
+  assert CONQUISTAS['berserker'].verificar(personagem)
+  assert not CONQUISTAS['piromante'].verificar(personagem)

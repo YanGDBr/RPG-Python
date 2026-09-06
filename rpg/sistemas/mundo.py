@@ -20,14 +20,15 @@ motor de exploração, porque ela pode abrir uma batalha de verdade.
 """
 
 import random
+import time
 
 from ..config import (ACOES_POR_DESGASTE_FOME_MUNDO, CHANCE_ENCONTRO_SELVAGEM, FOME_MAXIMA,
-                       JANELA_MUNDO_ALTURA, JANELA_MUNDO_LARGURA, Cor)
+                       JANELA_MUNDO_ALTURA, JANELA_MUNDO_LARGURA, VELOCIDADE_ANIMACAO_DIALOGO, Cor)
 from ..dados.monstros import MONSTROS
 from ..dados.npcs import NPCS
-from ..entrada import aguardar_leitura, ler_tecla, menu as menu_padrao, perguntar_sim_nao
+from ..entrada import ENTER, aguardar_leitura, ler_tecla, menu as menu_padrao, perguntar_sim_nao, tecla_disponivel
 from ..interface import limpar_tela
-from . import equipamento
+from . import equipamento, inventario
 from .batalha import ResultadoBatalha, batalhar
 from .progressao import aplicar_desgaste_fome, conceder_recompensas, verificar_morte
 
@@ -84,7 +85,7 @@ def _desenhar_mapa(mapa, posicao, titulo, eventos, personagem, zonas_selvagens, 
       else:
         celulas.append(f'{Cor.CINZA}{caractere}{Cor.RESET}')
     linhas.append(' '.join(celulas))
-  linhas.append('\nWASD ou setas para andar — Esc para voltar.')
+  linhas.append('\nWASD ou setas para andar — C para comer — Esc para voltar.')
   return '\n'.join(linhas)
 
 
@@ -111,9 +112,24 @@ def _encontro_selvagem(personagem, nomes_possiveis, escrever, aguardar, limpar,
   aguardar()
 
 
+def _comer_durante_exploracao(personagem, escrever, aguardar, ler_acao):
+  """Pedido do usuário: antes só dava pra comer na Casa da vila — quem
+  ficasse com fome longe de casa, no meio do mundo aberto, não tinha opção
+  nenhuma além de voltar andando."""
+  comidas_disponiveis = [nome for nome, qtd in personagem.comidas.items() if qtd > 0]
+  if not comidas_disponiveis:
+    escrever(f'{Cor.VERMELHO}Você não tem nenhuma comida.{Cor.RESET}')
+    aguardar()
+    return
+  escolha = ler_acao('O que deseja comer?', comidas_disponiveis)
+  if escolha is not None:
+    inventario.comer(personagem, comidas_disponiveis[escolha], escrever)
+    aguardar()
+
+
 def explorar_mapa(personagem, mapa, eventos, titulo, *, escrever=None, leitor_tecla=None,
                    limpar=None, aguardar=None, zonas_selvagens=None, ler_confirmacao=None,
-                   ler_acao_batalha=None, janela=None):
+                   ler_acao_batalha=None, ler_acao=None, janela=None):
   """Anda livremente por `mapa` até um evento sinalizar saída (retornando algo
   diferente de `None`) ou o jogador apertar Esc (retorna `None`).
 
@@ -121,13 +137,15 @@ def explorar_mapa(personagem, mapa, eventos, titulo, *, escrever=None, leitor_te
   monstro. Pisar numa dessas células tem `CHANCE_ENCONTRO_SELVAGEM` de
   chance de abrir uma batalha de verdade contra um monstro sorteado da lista.
   Cada passo de verdade também desgasta fome — bem diferente da dungeon, onde
-  só desgasta ao pisar num ponto de interesse."""
+  só desgasta ao pisar num ponto de interesse. A tecla C abre "o que comer"
+  sem interromper a exploração (não consome um passo)."""
   escrever = escrever or print
   leitor_tecla = leitor_tecla or ler_tecla
   limpar = limpar or limpar_tela
   aguardar = aguardar or aguardar_leitura
   ler_confirmacao = ler_confirmacao or perguntar_sim_nao
   ler_acao_batalha = ler_acao_batalha or menu_padrao
+  ler_acao = ler_acao or menu_padrao
   zonas_selvagens = zonas_selvagens or {}
   janela = janela or (JANELA_MUNDO_LARGURA, JANELA_MUNDO_ALTURA)
 
@@ -141,6 +159,9 @@ def explorar_mapa(personagem, mapa, eventos, titulo, *, escrever=None, leitor_te
     tecla = leitor_tecla()
     if tecla == 'esc':
       return None
+    if tecla == 'c':
+      _comer_durante_exploracao(personagem, escrever, aguardar, ler_acao)
+      continue
     deslocamento = DESLOCAMENTOS.get(tecla)
     if deslocamento is None:
       continue
@@ -165,11 +186,42 @@ def explorar_mapa(personagem, mapa, eventos, titulo, *, escrever=None, leitor_te
           return None
 
 
-def mostrar_falas(nome, falas, escrever, aguardar, limpar):
+def _redesenhar_dialogo(escrever, limpar, nome, falas_completas, parcial=''):
   limpar()
   escrever(f'{Cor.BRANCO}{nome}{Cor.RESET}\n')
-  for fala in falas:
+  for fala in falas_completas:
     escrever(f'"{fala}"\n')
+  if parcial:
+    escrever(f'"{parcial}"\n')
+
+
+def mostrar_falas(nome, falas, escrever, aguardar, limpar, *, esperar=None,
+                   tecla_disponivel_fn=None, leitor_tecla=None, velocidade=None):
+  """Cada fala aparece palavra por palavra, como se o NPC estivesse
+  digitando/falando de verdade. Enter ou Espaço a qualquer momento pula o
+  resto da animação — mostra tudo de uma vez e segue pro `aguardar()` final,
+  sem precisar esperar."""
+  esperar = esperar or time.sleep
+  tecla_disponivel_fn = tecla_disponivel_fn or tecla_disponivel
+  leitor_tecla = leitor_tecla or ler_tecla
+  velocidade = VELOCIDADE_ANIMACAO_DIALOGO if velocidade is None else velocidade
+
+  pulou = False
+  for indice, fala in enumerate(falas):
+    if pulou:
+      break
+    parcial = ''
+    for palavra in fala.split(' '):
+      parcial = f'{parcial} {palavra}'.strip()
+      _redesenhar_dialogo(escrever, limpar, nome, falas[:indice], parcial)
+      if tecla_disponivel_fn():
+        if leitor_tecla() == ENTER:
+          pulou = True
+          break
+      else:
+        esperar(velocidade)
+
+  _redesenhar_dialogo(escrever, limpar, nome, falas)
   aguardar()
 
 

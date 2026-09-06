@@ -8,7 +8,7 @@ from datetime import date
 
 from ..config import DESCONTO_OFERTA_DIA, QUANTIDADE_OFERTAS_DIA, Cor
 from ..dados.itens import PRECO_COMIDA
-from ..dados.lojas import (CATALOGO_ACESSORIOS, CATALOGO_ARMADURAS,
+from ..dados.lojas import (CATALOGO_ACESSORIOS, CATALOGO_ACESSORIOS_VETHGARD, CATALOGO_ARMADURAS,
                             CATALOGO_ITENS_CONSUMIVEIS, CATALOGO_POCOES,
                             COMIDAS_VENDIDAS, armas_disponiveis_para_classe)
 from ..entrada import aguardar_leitura
@@ -79,6 +79,31 @@ def loja_acessorios(personagem, escrever=print, ler_acao=None, aguardar=None):
       return
     indice = escolha
     acessorio = CATALOGO_ACESSORIOS[escolha]
+    if (acessorio.nome in personagem.acessorios_guardados
+        or acessorio.nome in personagem.acessorios_equipados):
+      escrever(f'{Cor.AMARELO}Você já tem esse acessório.{Cor.RESET}')
+      aguardar()
+      continue
+    if _pagar(personagem, acessorio.preco, escrever):
+      personagem.acessorios_guardados.append(acessorio.nome)
+      escrever(f'{Cor.VERDE}Você comprou {acessorio.nome}. Equipe-o em Personagem.{Cor.RESET}')
+    aguardar()
+
+
+def loja_acessorios_vethgard(personagem, escrever=print, ler_acao=None, aguardar=None):
+  """Segunda cidade, catálogo mais forte — mesmo molde de `loja_acessorios`,
+  só que com os acessórios de Vethgard (bem mais fortes e mais caros)."""
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  indice = 0
+  while True:
+    opcoes = [f'{a.nome} — {a.preco} cobres ({a.descricao}) — equipe em Personagem'
+              for a in CATALOGO_ACESSORIOS_VETHGARD]
+    escolha = ler_acao(_titulo(personagem, 'Loja de Acessórios de Vethgard'), opcoes, indice_inicial=indice)
+    if escolha is None:
+      return
+    indice = escolha
+    acessorio = CATALOGO_ACESSORIOS_VETHGARD[escolha]
     if (acessorio.nome in personagem.acessorios_guardados
         or acessorio.nome in personagem.acessorios_equipados):
       escrever(f'{Cor.AMARELO}Você já tem esse acessório.{Cor.RESET}')

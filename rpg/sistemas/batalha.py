@@ -189,7 +189,8 @@ def _tentar_detonar_efeito(personagem, monstro, habilidade, escrever):
     return 0
   for efeito_ativo in list(monstro.efeitos_ativos):
     if efeito_ativo['nome'] in efeitos.DANO_POR_TURNO and efeito_ativo['turnos'] > 0:
-      bonus = efeitos.DANO_POR_TURNO[efeito_ativo['nome']] * efeito_ativo['turnos']
+      percentual = efeitos.DANO_POR_TURNO[efeito_ativo['nome']] * efeito_ativo['turnos']
+      bonus = max(1, round(monstro.vida_maxima_real * percentual / 100))
       monstro.efeitos_ativos.remove(efeito_ativo)
       escrever(f'{Cor.AMARELO}Você detona {efeito_ativo["nome"]} em {monstro.nome}, '
                f'causando {bonus} de dano extra!{Cor.RESET}')
@@ -331,6 +332,10 @@ def _receber_ataque_do_monstro(personagem, dano_bruto, descricao, escrever):
   elif personagem.postura == 'defensiva':
     bonus_percentual -= BONUS_POSTURA_DEFENSIVA_REDUCAO
   bonus_percentual -= equipamento.reducao_dano_acessorio(personagem)
+  # Bug: alguns monstros aplicam Vulnerabilidade no jogador (efeito_aplicado),
+  # mas nada nunca lia esse efeito na hora de calcular o dano recebido — o
+  # efeito "grudava" mas não fazia diferença nenhuma.
+  bonus_percentual += efeitos.bonus_vulnerabilidade(personagem.efeitos_ativos)
 
   dano = dano_bruto
   if bonus_percentual:
@@ -408,12 +413,38 @@ def monstro_ataca(personagem, monstro, escrever):
   return False
 
 
+def _descricao_elemento_monstro(monstro):
+  """Fraqueza/resistência explícita de um monstro sempre vale mais que a roda
+  elemental genérica (ver Guia Elemental) — mostra a explícita quando existe,
+  senão cai pra implícita da roda, pra o jogador sempre saber o que
+  atacar sem precisar decorar ou testar às cegas."""
+  base = monstro.base
+  partes = [f'Elemento: {Cor.CIANO}{base.elemento}{Cor.RESET}']
+
+  if base.fraquezas:
+    partes.append(f'Fraqueza: {Cor.VERDE}{", ".join(base.fraquezas)}{Cor.RESET}')
+  elif base.elemento in CICLO_ELEMENTAL:
+    indice = CICLO_ELEMENTAL.index(base.elemento)
+    fraqueza_roda = CICLO_ELEMENTAL[(indice - 1) % len(CICLO_ELEMENTAL)]
+    partes.append(f'Fraqueza (roda): {Cor.VERDE}{fraqueza_roda}{Cor.RESET}')
+
+  if base.resistencias:
+    partes.append(f'Resistência: {Cor.VERMELHO}{", ".join(base.resistencias)}{Cor.RESET}')
+  elif base.elemento in CICLO_ELEMENTAL:
+    indice = CICLO_ELEMENTAL.index(base.elemento)
+    resistencia_roda = CICLO_ELEMENTAL[(indice + 1) % len(CICLO_ELEMENTAL)]
+    partes.append(f'Resistência (roda): {Cor.VERMELHO}{resistencia_roda}{Cor.RESET}')
+
+  return '  '.join(partes)
+
+
 def _tela_batalha(personagem, monstros):
   vida_max = equipamento.vida_maxima_efetiva(personagem)
   mana_max = equipamento.mana_maxima_efetiva(personagem)
   linhas_monstros = []
   for m in _ativos(monstros):
     linhas_monstros.append(f'  {m.nome}: {barra(m.vida, m.vida_maxima_real, cor=Cor.VERMELHO)}')
+    linhas_monstros.append(f'    {_descricao_elemento_monstro(m)}')
   titulo = (f'  {Cor.BRANCO}Batalha{Cor.RESET}\n' + '\n'.join(linhas_monstros) + '\n\n'
             f'  Sua vida: {barra(personagem.vida, vida_max, cor=Cor.VERMELHO)}\n'
             f'  Sua mana: {barra(personagem.mana, mana_max, cor=Cor.AZUL)}\n'
@@ -523,6 +554,7 @@ def batalhar(personagem, monstro_base, escrever=None, ler_acao=None, aguardar=No
     escrever(f'{Cor.BRANCO}Você entrou em batalha contra {monstros[0].nome}!{Cor.RESET}{sufixo_elite}')
   aguardar()
 
+  indice_batalha = 0
   while True:
     if personagem.vida <= 0:
       return _devolver(ResultadoBatalha.DERROTA)
@@ -565,7 +597,9 @@ def batalhar(personagem, monstro_base, escrever=None, ler_acao=None, aguardar=No
       labels += ['Itens', 'Pular a vez', 'Tentar fugir']
       acoes += ['itens', 'pular', 'fugir']
 
-      escolha = ler_acao(_tela_batalha(personagem, monstros), labels, com_voltar=False)
+      escolha = ler_acao(_tela_batalha(personagem, monstros), labels, com_voltar=False,
+                         indice_inicial=indice_batalha)
+      indice_batalha = escolha
       tipo_acao = acoes[escolha]
 
       if tipo_acao == 'habilidade':

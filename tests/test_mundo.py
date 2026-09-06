@@ -76,6 +76,58 @@ def test_falar_com_npc_mostra_as_falas_e_aguarda(monkeypatch):
   assert len(chamadas_aguardar) == 1
 
 
+def test_mostrar_falas_anima_palavra_por_palavra():
+  """Pedido do usuário: as letras/palavras aparecem uma de cada vez, dando
+  impressão de que o NPC está falando de verdade."""
+  quadros = []
+
+  mundo.mostrar_falas(
+      'Fulano', ['Um dois três quatro'], escrever=quadros.append,
+      aguardar=lambda: None, limpar=lambda: None,
+      esperar=lambda *_a: None, tecla_disponivel_fn=lambda: False)
+
+  # cada palavra nova gera um redesenho — pelo menos um quadro por palavra,
+  # com o texto crescendo a cada um.
+  textos_parciais = [q for q in quadros if 'Um' in q]
+  assert len(textos_parciais) >= 4
+  assert 'Um dois' in textos_parciais[1]
+  assert 'Um dois três quatro' in quadros[-1]
+
+
+def test_mostrar_falas_pula_animacao_ao_apertar_enter():
+  """Pedido do usuário: apertar Enter/Espaço a qualquer momento pula a
+  animação, mostrando tudo de uma vez."""
+  from rpg.entrada import ENTER
+  chamadas_esperar = []
+
+  mundo.mostrar_falas(
+      'Fulano', ['Uma frase razoavelmente longa para testar a animação inteira'],
+      escrever=lambda *_a: None, aguardar=lambda: None, limpar=lambda: None,
+      esperar=lambda *_a: chamadas_esperar.append(1),
+      tecla_disponivel_fn=lambda: True, leitor_tecla=lambda: ENTER)
+
+  # pulou logo na primeira palavra — nunca chegou a "esperar" nenhuma vez.
+  assert chamadas_esperar == []
+
+
+def test_mostrar_falas_ignora_tecla_que_nao_e_enter():
+  """Uma tecla qualquer (não Enter/Espaço) só é descartada — não pula a
+  animação: cada palavra ainda gera seu próprio redesenho."""
+  quadros = []
+
+  mundo.mostrar_falas(
+      'Fulano', ['Duas palavras'], escrever=quadros.append,
+      aguardar=lambda: None, limpar=lambda: None,
+      esperar=lambda *_a: None,
+      tecla_disponivel_fn=lambda: True, leitor_tecla=lambda: 'w')
+
+  # 1 redesenho por palavra (2) + o redesenho final completo = 3, não pulou
+  # — cada redesenho imprime a linha do nome, então conta quantas vezes ela
+  # aparece pra saber quantos redesenhos de verdade aconteceram.
+  redesenhos = sum(1 for q in quadros if 'Fulano' in q)
+  assert redesenhos == 3
+
+
 def test_andar_no_mundo_desgasta_fome_por_passo():
   """Diferente da dungeon (só desgasta ao pisar num `?`), no mundo aberto
   cada passo de verdade conta — é o que o usuário pediu explicitamente. Usa
@@ -112,6 +164,43 @@ def test_andar_no_mundo_gasta_fome_bem_mais_devagar_que_na_dungeon():
       limpar=lambda: None, aguardar=lambda: None)
 
   assert personagem.fome == fome_antes  # nenhum desgaste ainda nesse número de passos
+
+
+def test_comer_durante_exploracao_nao_gasta_passo_nem_encerra():
+  """Pedido do usuário: dá pra comer sem sair do mundo aberto — apertar C
+  não deveria contar como passo (não desgasta fome) nem encerrar a
+  exploração."""
+  personagem = _personagem()
+  personagem.comidas = {'Bife': 2}
+  personagem.fome = 5
+  mapa = ('#####', '#E..#', '#####')
+
+  resultado = mundo.explorar_mapa(
+      personagem, mapa, {}, 'Teste',
+      escrever=lambda *_a, **_k: None,
+      leitor_tecla=_leitor(['c', 'esc']),
+      ler_acao=lambda _t, _o, **_k: 0,  # escolhe "Bife"
+      limpar=lambda: None, aguardar=lambda: None)
+
+  assert resultado is None
+  assert personagem.comidas['Bife'] == 1
+  assert personagem.fome == 10  # FOME_MAXIMA — comer sempre recupera tudo
+  assert personagem.acoes_desde_desgaste_fome == 0  # apertar C não conta como passo
+
+
+def test_comer_durante_exploracao_sem_comida_avisa_e_continua():
+  personagem = _personagem()
+  personagem.comidas = {}
+  mapa = ('#####', '#E..#', '#####')
+  mensagens = []
+
+  resultado = mundo.explorar_mapa(
+      personagem, mapa, {}, 'Teste', escrever=mensagens.append,
+      leitor_tecla=_leitor(['c', 'esc']),
+      limpar=lambda: None, aguardar=lambda: None)
+
+  assert resultado is None
+  assert any('não tem nenhuma comida' in m for m in mensagens)
 
 
 def test_mapa_do_mundo_exibe_a_fome_atual():

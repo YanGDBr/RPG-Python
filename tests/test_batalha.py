@@ -159,6 +159,46 @@ def test_fraqueza_no_monstro_reduz_o_dano_que_ele_causa():
   assert dano_fraco < dano_normal
 
 
+def test_vulnerabilidade_no_jogador_aumenta_dano_recebido():
+  """Regressão: alguns monstros aplicam Vulnerabilidade no jogador
+  (`efeito_aplicado`), mas nada nunca lia esse efeito na hora de calcular o
+  dano recebido — o efeito "grudava" e não fazia diferença nenhuma."""
+  from rpg.sistemas import efeitos
+  personagem_normal = _personagem_cavaleiro()
+  personagem_vulneravel = _personagem_cavaleiro()
+  efeitos.aplicar_efeito(personagem_vulneravel.efeitos_ativos, 'Vulnerabilidade', 2, valor=50)
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  monstro2 = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+
+  random.seed(1)
+  vida_antes = personagem_normal.vida
+  batalha.monstro_ataca(personagem_normal, monstro, lambda *_a, **_k: None)
+  dano_normal = vida_antes - personagem_normal.vida
+
+  random.seed(1)
+  vida_antes = personagem_vulneravel.vida
+  batalha.monstro_ataca(personagem_vulneravel, monstro2, lambda *_a, **_k: None)
+  dano_vulneravel = vida_antes - personagem_vulneravel.vida
+
+  assert dano_vulneravel > dano_normal
+
+
+def test_marcado_no_monstro_aumenta_dano_que_ele_recebe():
+  from rpg.dados.habilidades import HABILIDADES
+  from rpg.sistemas import efeitos
+  personagem = _personagem_cavaleiro()
+  habilidade = HABILIDADES[CLASSES['Cavaleiro'].habilidades_iniciais[0]]
+  monstro_normal = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  monstro_marcado = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  efeitos.aplicar_efeito(monstro_marcado.efeitos_ativos, 'Marcado', 3, valor=25)
+
+  # `prever_dano` (sem rolagem de crítico) pra comparação determinística.
+  dano_normal = batalha.prever_dano(personagem, habilidade, monstro_normal)
+  dano_marcado = batalha.prever_dano(personagem, habilidade, monstro_marcado)
+
+  assert dano_marcado > dano_normal
+
+
 def test_fuga_bem_sucedida_termina_em_fuga(monkeypatch):
   personagem = _personagem_cavaleiro()
   monkeypatch.setattr(batalha.random, 'randint', lambda a, b: 1)  # força sucesso na fuga
@@ -183,6 +223,52 @@ def test_ataque_fisico_detona_queimadura_ativa_no_monstro():
 
   assert not any(e['nome'] == 'Queimadura' for e in monstro.efeitos_ativos)
   assert any('detona' in m for m in mensagens)
+
+
+def test_bonus_de_detonar_escala_com_a_vida_maxima_do_monstro():
+  """Regressão: o bônus de detonar usava o valor fixo antigo de
+  DANO_POR_TURNO como se já fosse dano — depois da mudança pra percentual,
+  precisa multiplicar pela vida máxima do monstro, senão vira um número
+  minúsculo (ou, dependendo da leitura, um monstro fraco tomaria a mesma
+  "quantidade" de um chefe)."""
+  from rpg.sistemas import efeitos
+  personagem = _personagem_cavaleiro()
+  from rpg.dados.habilidades import HABILIDADES
+  habilidade = HABILIDADES['Investida']
+
+  monstro_fraco = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  efeitos.aplicar_efeito(monstro_fraco.efeitos_ativos, 'Queimadura', 3)
+  bonus_fraco = batalha._tentar_detonar_efeito(personagem, monstro_fraco, habilidade, lambda *_a: None)
+
+  monstro_tanque = MonstroBatalha.instanciar(MONSTROS['Dragão Ancião de Habusken'])
+  efeitos.aplicar_efeito(monstro_tanque.efeitos_ativos, 'Queimadura', 3)
+  bonus_tanque = batalha._tentar_detonar_efeito(personagem, monstro_tanque, habilidade, lambda *_a: None)
+
+  assert bonus_tanque > bonus_fraco * 5
+
+
+def test_tela_batalha_mostra_elemento_e_fraqueza_explicita_do_monstro():
+  import re
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Slime'])  # elemento Fisico, fraqueza Fogo
+
+  texto = re.sub(r'\x1b\[[0-9;]*m', '', batalha._tela_batalha(personagem, [monstro]))
+
+  assert 'Elemento: Fisico' in texto
+  assert 'Fraqueza: Fogo' in texto
+  assert 'Resistência: Fisico' in texto
+
+
+def test_tela_batalha_mostra_fraqueza_da_roda_quando_nao_tem_explicita():
+  """Kobold não tem fraqueza/resistência explícita nenhuma — cai pra roda
+  elemental genérica (Guia Elemental), pro jogador nunca ficar sem pista."""
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])  # elemento Fisico (padrão), sem explícitas
+
+  texto = batalha._tela_batalha(personagem, [monstro])
+
+  assert 'Fraqueza (roda):' in texto
+  assert 'Resistência (roda):' in texto
 
 
 def test_postura_defensiva_reduz_dano_recebido():
@@ -309,6 +395,30 @@ def test_trocar_postura_nao_gasta_turno():
 
   assert resultado == batalha.ResultadoBatalha.VITORIA
   assert personagem.vida == personagem.vida_maxima  # nunca levou dano nenhum
+
+
+def test_batalha_lembra_o_ultimo_indice_escolhido_no_menu_de_acoes():
+  """Pedido do usuário: se usar tal habilidade, ela deve continuar marcada
+  no mesmo índice na próxima vez que o menu de ações da batalha aparecer."""
+  personagem = _personagem_cavaleiro()
+  monstro_base = MONSTROS['Slime Gigante']  # bastante vida, não morre em 2 golpes
+  indices_iniciais_vistos = []
+  respostas = iter([1, 1])  # escolhe a habilidade de índice 1 duas vezes seguidas
+
+  def _fake_menu(_titulo, _opcoes, *, indice_inicial=0, **_kw):
+    indices_iniciais_vistos.append(indice_inicial)
+    return next(respostas)
+
+  try:
+    batalha.batalhar(personagem, monstro_base, escrever=lambda *_a, **_k: None,
+                      ler_acao=_fake_menu, aguardar=lambda: None)
+  except StopIteration:
+    pass  # só nos importa ver os 2 primeiros índices iniciais recebidos
+
+  # 1º turno abre no índice 0 (padrão); o 2º já abre no índice 1, que foi o
+  # escolhido no turno anterior — em vez de resetar pro topo.
+  assert indices_iniciais_vistos[0] == 0
+  assert indices_iniciais_vistos[1] == 1
 
 
 def test_chance_de_critico_base_nao_inclui_bonus_de_habilidade():

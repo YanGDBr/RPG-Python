@@ -53,6 +53,28 @@ SIDEQUESTS = {
       tipo='entregar_material', alvo='Cristal Arcano', quantidade=1,
       recompensa_exp=250, recompensa_moedas=50,
       texto_conclusao='Perfeito. Talvez agora eu consiga ler o que resta desse pergaminho...'),
+
+  # Sidequests de Vethgard — recompensa bem maior, porque só dá pra chegar
+  # aqui depois de limpar a dungeon inteira de Habusken (e o Selo provar
+  # isso pro guarda da estrada).
+  'ameaca_gelada': Sidequest(
+      id='ameaca_gelada', npc='capita_wren',
+      titulo='Ameaça Gelada',
+      descricao_oferta=('A Torre Arcana anda mandando Elementais de Gelo até perto das muralhas. '
+                         'Preciso de alguém forte pra abater 6 deles antes que cheguem aos portões.'),
+      tipo='derrotar', alvo='Elemental de Gelo', quantidade=6,
+      recompensa_exp=900, recompensa_moedas=450,
+      texto_conclusao=('Vethgard te deve essa. A guarda vai dormir mais tranquila essa semana, '
+                        'ao menos.')),
+  'eco_do_abismo': Sidequest(
+      id='eco_do_abismo', npc='estudioso_aldric',
+      titulo='Eco do Abismo',
+      descricao_oferta=('Estudo o que emerge do Abismo Submerso há anos. Uma Pérola Negra, intacta, '
+                         'me diria mais sobre aquele lugar do que uma década de teoria. Traga-me uma?'),
+      tipo='entregar_material', alvo='Pérola Negra', quantidade=1,
+      recompensa_exp=1200, recompensa_moedas=600,
+      texto_conclusao=('Extraordinário. A estrutura dela não é... natural. Isso muda tudo que eu '
+                        'pensava saber sobre o Abismo.')),
 }
 
 SIDEQUESTS_POR_NPC = {}
