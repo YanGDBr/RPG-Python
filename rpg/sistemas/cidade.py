@@ -333,12 +333,16 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
 
     linhas_acessorios = ([f'  - {a.nome}: {a.descricao}' for a in acessorios]
                          if acessorios else ['  Nenhum equipado'])
+    linha_especiais = (f'\nItens especiais: {Cor.CIANO}'
+                        + ', '.join(personagem.itens_especiais) + f'{Cor.RESET}'
+                        if personagem.itens_especiais else '')
     titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
               f'Arma: {Cor.BRANCO}{arma.nome}{Cor.RESET} '
               f'({arma.bonus_poder_percentual}% poder, {arma.elemento})\n'
               f'Armadura: {Cor.BRANCO}{armadura.nome if armadura else "Nenhuma"}{Cor.RESET}'
               f'{f" ({armadura.descricao})" if armadura else ""}\n'
-              f'Acessórios ({len(acessorios)}/{max_slots}):\n' + '\n'.join(linhas_acessorios))
+              f'Acessórios ({len(acessorios)}/{max_slots}):\n' + '\n'.join(linhas_acessorios)
+              + linha_especiais)
 
     total_armas = len(personagem.equipamentos_guardados)
     total_armaduras = len(personagem.armaduras_guardadas)
@@ -817,6 +821,48 @@ def tela_mapa_progresso(personagem, escrever=print, ler_acao=None, aguardar=None
       else:
         status = f'{Cor.CINZA}bloqueado{Cor.RESET}'
       linhas.append(f'  Andar {andar.numero} — {andar.nome} ({andar.faixa_nivel}) — {status}')
+  ler_acao('\n'.join(linhas), ['Voltar'], com_voltar=False)
+
+
+def _verificar_novas_conquistas(personagem, escrever):
+  """Conquista não tem sistema de eventos — é só um predicado sobre o estado
+  atual, então a única hora sensata de checar se algo NOVO foi desbloqueado é
+  quando o jogador abre o diário. `conquistas_desbloqueadas` garante que a
+  recompensa só é concedida na primeira vez."""
+  from ..dados.conquistas import CONQUISTAS
+  novas = []
+  for conquista in CONQUISTAS.values():
+    if conquista.id in personagem.conquistas_desbloqueadas:
+      continue
+    if not conquista.verificar(personagem):
+      continue
+    personagem.conquistas_desbloqueadas.append(conquista.id)
+    personagem.exp += conquista.recompensa_exp
+    personagem.moeda_cobre += conquista.recompensa_moedas
+    personagem.moedas_totais_ganhas += conquista.recompensa_moedas
+    novas.append(conquista)
+  for conquista in novas:
+    escrever(f'{Cor.AMARELO}Conquista desbloqueada: {conquista.nome}! '
+             f'(+{conquista.recompensa_exp} exp, +{conquista.recompensa_moedas} cobres){Cor.RESET}')
+  return novas
+
+
+def tela_diario_conquistas(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  from ..dados.conquistas import CONQUISTAS
+
+  if _verificar_novas_conquistas(personagem, escrever):
+    aguardar()
+
+  linhas = [f'{Cor.BRANCO}Diário de Conquistas{Cor.RESET} '
+            f'({len(personagem.conquistas_desbloqueadas)}/{len(CONQUISTAS)})\n']
+  for conquista in CONQUISTAS.values():
+    if conquista.id in personagem.conquistas_desbloqueadas:
+      marca = f'{Cor.VERDE}[X]{Cor.RESET}'
+    else:
+      marca = f'{Cor.CINZA}[ ]{Cor.RESET}'
+    linhas.append(f'{marca} {Cor.BRANCO}{conquista.nome}{Cor.RESET} — {conquista.descricao}')
   ler_acao('\n'.join(linhas), ['Voltar'], com_voltar=False)
 
 

@@ -130,6 +130,26 @@ class Personagem:
   historia_concluida: bool = False
   data_criacao: str = field(default_factory=lambda: datetime.date.today().isoformat())
 
+  # Itens "especiais" que nunca passam pela loja/inventário normal: documentos
+  # de identidade (liberam a passagem pro guarda da próxima cidade, ganhos ao
+  # derrotar o chefe da dungeon correspondente) e itens de entrega de sidequest.
+  # Ficam à parte de `inventario` de propósito — não são consumíveis de
+  # verdade, então nunca deveriam aparecer na tela "usar item".
+  itens_especiais: Dict[str, int] = field(default_factory=dict)
+
+  # Baús e itens do chão do mundo aberto já coletados (id único por ponto do
+  # mapa) — pra não poder pegar a recompensa de novo ao voltar no mesmo lugar.
+  mundo_coletados: List[str] = field(default_factory=list)
+
+  # Sidequests de NPC (mundo aberto) — paralelo às missões da guilda, mas
+  # dadas por um NPC específico em vez de sorteadas num quadro.
+  sidequests_ativas: List[dict] = field(default_factory=list)
+  sidequests_completadas: List[str] = field(default_factory=list)
+
+  # Diário de conquistas: ids já desbloqueados, pra a recompensa de cada uma
+  # ser concedida só na primeira vez que a condição é vista como cumprida.
+  conquistas_desbloqueadas: List[str] = field(default_factory=list)
+
   def vida_percentual(self) -> float:
     return 0.0 if self.vida_maxima <= 0 else self.vida / self.vida_maxima
 
@@ -156,4 +176,15 @@ class Personagem:
     self.materiais[nome] -= quantidade
     if self.materiais[nome] <= 0:
       del self.materiais[nome]
+    return True
+
+  def adicionar_item_especial(self, nome: str, quantidade: int = 1):
+    self.itens_especiais[nome] = self.itens_especiais.get(nome, 0) + quantidade
+
+  def remover_item_especial(self, nome: str, quantidade: int = 1) -> bool:
+    if self.itens_especiais.get(nome, 0) < quantidade:
+      return False
+    self.itens_especiais[nome] -= quantidade
+    if self.itens_especiais[nome] <= 0:
+      del self.itens_especiais[nome]
     return True

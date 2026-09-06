@@ -181,11 +181,106 @@ def test_entrar_cratera_bloqueado_antes_de_liberar():
 def test_entrar_cratera_liberada_retorna_sinal_de_viagem():
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   personagem.cratera_vhalos_liberado = True
+  personagem.adicionar_item_especial('Selo de Vethgard')
 
   resultado = jogo._entrar_cratera_callback(
       personagem, lambda *_a, **_k: None, lambda: None, lambda: None)
 
   assert resultado == 'cratera'
+
+
+def test_entrar_cratera_sem_selo_de_vethgard_ainda_bloqueia():
+  """Regressão: o requisito de verdade pra passar é o documento de
+  identidade, não só a flag — pediu-se um item físico como "identidade"."""
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.cratera_vhalos_liberado = True  # flag ligada, mas sem o selo
+
+  resultado = jogo._entrar_cratera_callback(
+      personagem, lambda *_a, **_k: None, lambda: None, lambda: None)
+
+  assert resultado is None
+
+
+def test_entrar_vethgard_sem_selo_de_habusken_bloqueia():
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  mensagens = []
+
+  resultado = jogo._entrar_vethgard_callback(
+      personagem, mensagens.append, lambda: None, lambda: None)
+
+  assert resultado is None
+  assert any('Selo de Habusken' in m for m in mensagens)
+
+
+def test_entrar_vethgard_com_selo_de_habusken_libera_passagem():
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  personagem.adicionar_item_especial('Selo de Habusken')
+
+  resultado = jogo._entrar_vethgard_callback(
+      personagem, lambda *_a, **_k: None, lambda: None, lambda: None)
+
+  assert resultado == 'vethgard'
+
+
+def test_eventos_do_mundo_aberto_referenciam_npcs_e_sidequests_validos(monkeypatch):
+  """Regressão contra erro de digitação: cada NPC/sidequest usado nos mapas
+  do mundo aberto só quebraria em tempo real, ao pisar naquela célula, sem
+  esse teste — aqui é pego na hora. `menu_padrao` é mockado porque os
+  eventos de NPC com sidequest usam o menu de setas de verdade por padrão
+  (travaria esperando teclado)."""
+  from rpg.dados.npcs import NPCS
+  from rpg.dados.sidequests import SIDEQUESTS
+
+  monkeypatch.setattr('rpg.sistemas.mundo.menu_padrao', lambda *_a, **_k: None)
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  for eventos in (jogo._eventos_ilyrath(), jogo._eventos_vethgard()):
+    for caractere, callback in eventos.items():
+      # cada callback tem que ser chamável sem estourar exceção, com um
+      # personagem "zerado" e todas as dependências injetadas mockadas.
+      callback(personagem, lambda *_a, **_k: None, lambda: None, lambda: None)
+
+  # nomes usados nas fábricas de evento precisam bater com os catálogos —
+  # checagem direta, sem depender de nenhuma exceção ter estourado acima.
+  for chave_npc in ('arquivista_sorel', 'orfao_mikel', 'guarda_vethgard', 'velho_caminhante'):
+    assert chave_npc in NPCS
+  for sidequest_id in ('cristal_para_sorel', 'lenco_da_familia', 'ecos_da_cantiga'):
+    assert sidequest_id in SIDEQUESTS
+
+
+def test_navegacao_real_da_entrada_ate_o_primeiro_bau_de_ilyrath():
+  """Regressão de mapa: um obstáculo mal posicionado no caminho entre a
+  entrada e um ponto de interesse deixaria aquele ponto inalcançável sem
+  nenhum teste unitário pegar isso (eles chamam os callbacks direto, sem
+  navegar de verdade). Aqui anda-se pelo mapa real de verdade."""
+  from rpg.dados.mapas_mundo import MAPA_ILYRATH
+  from rpg.sistemas import mundo as sistema_mundo
+
+  personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
+  chamadas = []
+  eventos = {'1': lambda *_a: chamadas.append('bau') or None}
+  # entrada em (9, 1), baú '1' em (4, 12) — sobe 5, depois vai à direita 11.
+  fila = ['cima'] * 5 + ['direita'] * 11
+
+  sistema_mundo.explorar_mapa(
+      personagem, MAPA_ILYRATH, eventos, 'teste',
+      escrever=lambda *_a, **_k: None,
+      leitor_tecla=lambda: (fila.pop(0) if fila else 'esc'),
+      limpar=lambda: None, aguardar=lambda: None)
+
+  assert chamadas == ['bau']
+
+
+def test_mapas_do_mundo_aberto_tem_todos_os_caracteres_de_evento_cobertos():
+  """Todo caractere não-terreno (`.`, '#', 'E', 'F') que aparece no mapa
+  precisa ter um evento registrado — senão o jogador pisa nele e nada
+  acontece (ou pior, ele fica preso se o caractere não for andável)."""
+  from rpg.dados.mapas_mundo import MAPA_ILYRATH, MAPA_VETHGARD
+
+  caracteres_ilyrath = {c for linha in MAPA_ILYRATH for c in linha} - {'.', '#', 'E', 'F'}
+  assert caracteres_ilyrath == set(jogo._eventos_ilyrath())
+
+  caracteres_vethgard = {c for linha in MAPA_VETHGARD for c in linha} - {'.', '#', 'E', 'F'}
+  assert caracteres_vethgard == set(jogo._eventos_vethgard())
 
 
 def test_derrotar_vashtar_mostra_epilogo_uma_unica_vez(monkeypatch):

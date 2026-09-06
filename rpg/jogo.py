@@ -314,34 +314,61 @@ def _tela_dungeon(personagem, dungeon_id, slots):
       return
 
 
+_ZONAS_SELVAGENS_ILYRATH = {'F': ['Slime', 'Kobold', 'Lobo']}
+
+
+def _entrar_vethgard_callback(personagem, escrever, aguardar, limpar):
+  if personagem.itens_especiais.get('Selo de Habusken', 0) <= 0:
+    limpar()
+    escrever(f'{Cor.CINZA}O guarda da estrada barra sua passagem: "Sem o Selo de Habusken, '
+             f'ninguém entra em Vethgard. Prove seu valor na dungeon de Habusken primeiro."{Cor.RESET}')
+    aguardar()
+    return None
+  return 'vethgard'
+
+
 def _entrar_cratera_callback(personagem, escrever, aguardar, limpar):
-  if not personagem.cratera_vhalos_liberado:
+  if personagem.itens_especiais.get('Selo de Vethgard', 0) <= 0:
     limpar()
     escrever(f'{Cor.CINZA}Os mapas antigos marcam esse caminho só como "não ir". '
-             f'Talvez ainda não seja hora.{Cor.RESET}')
+             f'Talvez ainda não seja hora — falta o Selo de Vethgard.{Cor.RESET}')
     aguardar()
     return None
   return 'cratera'
 
 
-def _tela_vethgard(personagem):
-  eventos = {
-    'S': mundo.falar_com_npc('arquivista_sorel'),
-    'M': mundo.falar_com_npc('orfao_mikel'),
+def _eventos_vethgard():
+  return {
+    'S': mundo.falar_com_npc_e_sidequest('arquivista_sorel', 'cristal_para_sorel'),
+    'M': mundo.falar_com_npc_e_sidequest('orfao_mikel', 'lenco_da_familia'),
     'G': mundo.falar_com_npc('guarda_vethgard'),
+    '6': mundo.abrir_bau('vethgard_bau_1', 'pocao', 'Vida', 1),
   }
-  mundo.explorar_mapa(personagem, MAPA_VETHGARD, eventos, 'Vethgard')
+
+
+def _eventos_ilyrath():
+  return {
+    'T': mundo.falar_com_npc_e_sidequest('velho_caminhante', 'ecos_da_cantiga'),
+    'V': _entrar_vethgard_callback,
+    'C': _entrar_cratera_callback,
+    '1': mundo.abrir_bau('ilyrath_bau_1', 'moedas', '', 80),
+    '2': mundo.abrir_bau('ilyrath_bau_2', 'material', 'Cristal Arcano', 1),
+    '3': mundo.pegar_item_do_chao('ilyrath_item_3', 'material', 'Presa de Lobo', 1),
+    '4': mundo.pegar_item_do_chao('ilyrath_item_4', 'especial', 'Lenço da Família de Mikel', 1),
+    '5': mundo.pegar_item_do_chao('ilyrath_item_5', 'moedas', '', 40),
+  }
+
+
+def _tela_vethgard(personagem):
+  mundo.explorar_mapa(personagem, MAPA_VETHGARD, _eventos_vethgard(), 'Vethgard')
 
 
 def _tela_mapa_mundo(personagem, slots):
-  eventos = {
-    'T': mundo.falar_com_npc('velho_caminhante'),
-    'V': lambda p, e, a, l: 'vethgard',
-    'C': _entrar_cratera_callback,
-  }
+  eventos = _eventos_ilyrath()
   while True:
     _talvez_autosalvar(personagem, slots)
-    resultado = mundo.explorar_mapa(personagem, MAPA_ILYRATH, eventos, 'Mapa de Ilyrath')
+    resultado = mundo.explorar_mapa(personagem, MAPA_ILYRATH, eventos, 'Estrada de Ilyrath',
+                                     zonas_selvagens=_ZONAS_SELVAGENS_ILYRATH)
     if resultado is None:
       return
     if resultado == 'vethgard':
@@ -371,7 +398,7 @@ def _tela_vila(personagem, slots):
                'Tutorial', 'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho', 'Ferreiro']
     if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
       opcoes.append('Especialização')
-    opcoes += ['Estatísticas', 'Mapa de Progresso', 'Salvar Dados', 'Salvar e Sair']
+    opcoes += ['Estatísticas', 'Mapa de Progresso', 'Diário de Conquistas', 'Salvar Dados', 'Salvar e Sair']
 
     cor_fome = Cor.VERMELHO if personagem.fome <= 3 else Cor.VERDE
     titulo = (f'{Cor.BRANCO}Vila Habusken — {personagem.nome}{Cor.RESET}\n'
@@ -435,6 +462,8 @@ def _tela_vila(personagem, slots):
       cidade.tela_estatisticas(personagem)
     elif acao == 'Mapa de Progresso':
       cidade.tela_mapa_progresso(personagem)
+    elif acao == 'Diário de Conquistas':
+      cidade.tela_diario_conquistas(personagem)
     elif acao == 'Salvar Dados':
       salvar_slots(slots)
       print(f'{Cor.VERDE}Dados salvos com sucesso!{Cor.RESET}')

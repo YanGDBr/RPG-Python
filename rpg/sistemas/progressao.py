@@ -7,8 +7,23 @@ from ..config import (ACOES_POR_DESGASTE_FOME, BONUS_ELITE_RECOMPENSA_PERCENTUAL
                        FOME_MAXIMA, MULTIPLICADOR_EXP_GLOBAL, REPUTACAO_GANHA_POR_MISSAO, Cor)
 from ..dados.itens import ACESSORIOS_UNICOS, MATERIAIS
 from ..dados.racas import RACAS
-from . import equipamento
+from . import equipamento, sidequests as sistema_sidequests
 from .inventario import consumir_efeito_ativado
+
+# Documento de identidade liberado ao derrotar o chefe daquela dungeon pela
+# primeira vez — é o que abre a passagem pelo guarda da próxima cidade no
+# mundo aberto (ver rpg/sistemas/mundo.py e rpg/jogo.py). O texto de cada
+# entrada é mostrado quando o documento é concedido.
+ITENS_IDENTIDADE_POR_CHEFE = {
+  'Dragão Ancião de Habusken': (
+      'Selo de Habusken',
+      'O conselho de Habusken sela seu feito com o brasão da vila: com o Dragão Ancião morto, '
+      'você já não é só mais um aventureiro — é alguém que Vethgard vai reconhecer.'),
+  'Kraken Ancestral': (
+      'Selo de Vethgard',
+      'A notícia chega a Vethgard antes de você: o Kraken Ancestral está morto. O selo que '
+      'recebe carrega o peso disso — poucos o receberam, e menos ainda voltaram de onde ele leva.'),
+}
 
 
 def verificar_morte(personagem, escrever):
@@ -107,6 +122,12 @@ def conceder_recompensas(personagem, monstro_base, escrever, elite=False):
       personagem.acessorios_guardados.append(acessorio_unico.nome)
       escrever(f'{Cor.AMARELO}{monstro_base.nome} deixou cair um acessório único: '
                f'{acessorio_unico.nome}!{Cor.RESET}')
+    entrada_documento = ITENS_IDENTIDADE_POR_CHEFE.get(monstro_base.nome)
+    if entrada_documento:
+      documento, flavor = entrada_documento
+      personagem.adicionar_item_especial(documento)
+      escrever(f'{Cor.CIANO}{flavor}{Cor.RESET}')
+      escrever(f'{Cor.CIANO}Você recebeu um documento de identidade: {documento}!{Cor.RESET}')
 
   subiu_nivel = False
   while personagem.exp >= personagem.exp_para_subir:
@@ -120,6 +141,7 @@ def conceder_recompensas(personagem, monstro_base, escrever, elite=False):
              f'Ganhou 3 pontos de status.{Cor.RESET}')
 
   _verificar_missao(personagem, monstro_base, escrever)
+  sistema_sidequests.registrar_derrota(personagem, monstro_base.nome, escrever)
 
 
 def _verificar_missao(personagem, monstro_base, escrever):

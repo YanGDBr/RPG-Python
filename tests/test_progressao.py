@@ -81,6 +81,40 @@ def test_exp_de_monstro_e_multiplicada_pelo_multiplicador_global(monkeypatch):
   assert personagem.exp == trunc(monstro.exp_min * MULTIPLICADOR_EXP_GLOBAL)
 
 
+def test_derrotar_chefe_de_habusken_concede_selo_de_identidade(monkeypatch):
+  personagem = _personagem()
+  personagem.vida = personagem.vida_maxima
+  monstro = MONSTROS['Dragão Ancião de Habusken']
+  monkeypatch.setattr(progressao.random, 'randint', lambda minimo, _maximo: minimo)
+
+  progressao.conceder_recompensas(personagem, monstro, lambda *_a, **_k: None)
+
+  assert personagem.itens_especiais.get('Selo de Habusken') == 1
+
+
+def test_derrotar_chefe_sem_documento_nao_ganha_item_especial(monkeypatch):
+  personagem = _personagem()
+  personagem.vida = personagem.vida_maxima
+  monstro = MONSTROS['Kobold']  # não é chefe
+  monkeypatch.setattr(progressao.random, 'randint', lambda minimo, _maximo: minimo)
+
+  progressao.conceder_recompensas(personagem, monstro, lambda *_a, **_k: None)
+
+  assert personagem.itens_especiais == {}
+
+
+def test_derrotar_monstro_avanca_sidequest_de_derrotar_ativa(monkeypatch):
+  personagem = _personagem()
+  personagem.vida = personagem.vida_maxima
+  personagem.sidequests_ativas = [{'id': 'ecos_da_cantiga', 'progresso': 0}]
+  monstro = MONSTROS['Lobo']
+  monkeypatch.setattr(progressao.random, 'randint', lambda minimo, _maximo: minimo)
+
+  progressao.conceder_recompensas(personagem, monstro, lambda *_a, **_k: None)
+
+  assert personagem.sidequests_ativas[0]['progresso'] == 1
+
+
 def test_fome_so_desgasta_a_cada_n_acoes():
   personagem = _personagem()
   personagem.vida = personagem.vida_maxima

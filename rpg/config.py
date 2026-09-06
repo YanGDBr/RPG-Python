@@ -178,3 +178,17 @@ SIMBOLOS_MINIGAME_CANALIZACAO = 4
 CHANCE_GRUPO_MONSTROS = 4          # 1 em N encontros comuns vira grupo
 TAMANHO_GRUPO_MONSTROS_MIN = 2
 TAMANHO_GRUPO_MONSTROS_MAX = 3
+
+# Mundo aberto (rpg/sistemas/mundo.py): mapas bem maiores que a tela, com uma
+# "câmera" que mostra só uma janela ao redor do jogador — ela rola conforme
+# ele anda, revelando mais do mapa aos poucos, em vez de mostrar tudo de uma
+# vez feito as dungeons.
+JANELA_MUNDO_LARGURA = 31
+JANELA_MUNDO_ALTURA = 13
+
+# Florestas do mundo aberto: cada passo numa célula de floresta tem 1 em N
+# chance de um monstro selvagem aparecer.
+CHANCE_ENCONTRO_SELVAGEM = 4
+
+# Fome no mundo aberto desgasta por PASSO de verdade (não só ao interagir com
+# algo), reaproveitando o mesmo limiar `ACOES_POR_DESGASTE_FOME` de dungeon.

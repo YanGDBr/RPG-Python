@@ -9,6 +9,20 @@ def _personagem():
   return Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
 
 
+def test_tela_personagem_mostra_itens_especiais_quando_tem():
+  """Documentos de identidade e itens de sidequest ficam fora do inventário
+  normal de propósito — sem isso, o jogador não teria como ver que os tem."""
+  personagem = _personagem()
+  personagem.adicionar_item_especial('Selo de Habusken')
+  titulos = []
+
+  cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=lambda titulo, *_a, **_k: titulos.append(titulo) or None,
+                          aguardar=lambda: None)
+
+  assert any('Selo de Habusken' in t for t in titulos)
+
+
 def test_mestre_habusken_pausa_ao_rejeitar_jogador_sem_boss_derrotado():
   personagem = _personagem()  # ainda não derrotou o Slime Gigante
   chamadas_aguardar = []
