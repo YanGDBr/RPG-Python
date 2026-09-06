@@ -6,6 +6,9 @@ frágil e impossível de ter dois efeitos com o mesmo prefixo).
 
 DANO_POR_TURNO = {'Queimadura': 15, 'Sangramento': 15, 'Veneno': 12}
 CURA_POR_TURNO_PERCENTUAL = {'Regeneração': 8}   # % da vida máxima curada por turno
+# Paralisia vem de habilidade/ataque; Atordoado vem de encher a barra de
+# atordoamento (ver ATORDOAMENTO_LIMIAR) — os dois impedem agir do mesmo jeito.
+EFEITOS_QUE_IMPEDEM_ACAO = {'Paralisia', 'Atordoado'}
 
 
 def aplicar_efeito(lista_efeitos, nome, turnos, valor=0):
@@ -30,7 +33,7 @@ def processar_efeitos_continuos(lista_efeitos, vida_atual, escrever, nome_alvo, 
   restantes = []
   for efeito in lista_efeitos:
     nome = efeito['nome']
-    if nome == 'Paralisia':
+    if nome in EFEITOS_QUE_IMPEDEM_ACAO:
       restantes.append(efeito)
       continue
     if nome in DANO_POR_TURNO:
@@ -50,15 +53,21 @@ def processar_efeitos_continuos(lista_efeitos, vida_atual, escrever, nome_alvo, 
   return vida_atual
 
 
+_DESCRICAO_IMPEDIMENTO = {'Paralisia': 'paralisado', 'Atordoado': 'atordoado'}
+
+
 def verificar_paralisia(lista_efeitos, escrever, nome_alvo):
-  """Decrementa a Paralisia ativa (se houver) e diz se o alvo perde a vez."""
+  """Decrementa Paralisia/Atordoado (o que estiver ativo) e diz se o alvo
+  perde a vez — os dois impedem agir do mesmo jeito, só a origem muda
+  (habilidade/ataque vs. barra de atordoamento cheia)."""
   for efeito in list(lista_efeitos):
-    if efeito['nome'] == 'Paralisia':
-      escrever(f'{nome_alvo} está paralisado e perde a vez!')
+    if efeito['nome'] in EFEITOS_QUE_IMPEDEM_ACAO:
+      descricao = _DESCRICAO_IMPEDIMENTO.get(efeito['nome'], efeito['nome'].lower())
+      escrever(f'{nome_alvo} está {descricao} e perde a vez!')
       efeito['turnos'] -= 1
       if efeito['turnos'] <= 0:
         lista_efeitos.remove(efeito)
-        escrever(f'A paralisia de {nome_alvo} acabou.')
+        escrever(f'O efeito {efeito["nome"]} em {nome_alvo} acabou.')
       return True
   return False
 
@@ -71,3 +80,11 @@ def bonus_debuff_poder(lista_efeitos):
 def bonus_vulnerabilidade(lista_efeitos):
   return sum(efeito['valor'] for efeito in lista_efeitos
              if efeito['nome'] == 'Vulnerabilidade' and efeito['turnos'] > 0)
+
+
+def bonus_marcado(lista_efeitos):
+  """'Marcado' é a marca de alvo do Arqueiro — mecanicamente idêntica à
+  Vulnerabilidade (bônus % de dano recebido), só que vem de uma habilidade
+  específica da classe."""
+  return sum(efeito['valor'] for efeito in lista_efeitos
+             if efeito['nome'] == 'Marcado' and efeito['turnos'] > 0)

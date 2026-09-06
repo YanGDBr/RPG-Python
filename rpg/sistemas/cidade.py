@@ -4,18 +4,24 @@ import random
 import string
 import time
 
-from ..config import (BONUS_ETEN_PERCENTUAL, CHANCE_CRITICO_MAXIMA, CICLO_ELEMENTAL,
-                       CUSTO_RENOVAR_QUADRO, CUSTOS_SLOT_ACESSORIO, ENCANTAMENTO_CUSTO_PRATA_BASE,
-                       ENCANTAMENTO_INCREMENTO, ENCANTAMENTO_MATERIAL, ENCANTAMENTO_MAXIMO_ARMADURA,
-                       ENCANTAMENTO_MAXIMO_ARMA, FOME_MAXIMA, MAX_MISSOES_ATIVAS,
+from ..config import (ATORDOAMENTO_GANHO_POR_ACERTO_FRACO, ATORDOAMENTO_LIMIAR, BONUS_CANALIZACAO_MAXIMO_PERCENTUAL,
+                       BONUS_ETEN_PERCENTUAL, BONUS_POSTURA_DEFENSIVA_DANO, BONUS_POSTURA_DEFENSIVA_REDUCAO,
+                       BONUS_POSTURA_OFENSIVA_DANO, BONUS_POSTURA_OFENSIVA_DANO_RECEBIDO,
+                       CHANCE_CRITICO_MAXIMA, CHANCE_GRUPO_MONSTROS, CICLO_ELEMENTAL,
+                       CUSTO_RENOVAR_QUADRO, CUSTOS_SLOT_ACESSORIO, CUSTOS_SLOT_HABILIDADE,
+                       ENCANTAMENTO_CUSTO_PRATA_BASE, ENCANTAMENTO_INCREMENTO, ENCANTAMENTO_MATERIAL,
+                       ENCANTAMENTO_MAXIMO_ARMADURA, ENCANTAMENTO_MAXIMO_ARMA, FOCO_GANHO_POR_ATAQUE,
+                       FOCO_GANHO_POR_CRITICO_EXTRA, FOME_MAXIMA, FURIA_GANHA_AO_ATACAR,
+                       FURIA_GANHA_AO_LEVAR_DANO, MARCADO_BONUS_DANO_PERCENTUAL_PADRAO, MAX_MISSOES_ATIVAS,
                        MULTIPLICADOR_FRAQUEZA_CICLO, MULTIPLICADOR_FRAQUEZA_ELEMENTAL,
                        MULTIPLICADOR_RESISTENCIA_CICLO, MULTIPLICADOR_RESISTENCIA_ELEMENTAL,
-                       REPUTACAO_TIERS, Cor)
+                       RESSONANCIA_ARCANA_BONUS_POR_STACK, RESSONANCIA_ARCANA_MAXIMA, REPUTACAO_TIERS,
+                       SIMBOLOS_MINIGAME_CANALIZACAO, Cor)
 from ..dados.dungeons import DUNGEONS
 from ..dados.especializacoes import (ESPECIALIZACOES, ESPECIALIZACOES_POR_CLASSE,
                                       NIVEL_MINIMO_ESPECIALIZACAO)
 from ..dados.habilidades import HABILIDADES, HABILIDADES_DESBLOQUEAVEIS
-from ..dados.itens import (ACESSORIOS, ACESSORIOS_UNICOS, ARMADURAS, ARMADURAS_UNICAS, ARMAS,
+from ..dados.itens import (ACESSORIOS, ACESSORIOS_UNICOS_POR_NOME, ARMADURAS, ARMADURAS_UNICAS, ARMAS,
                             ARMAS_LENDARIAS)
 from ..dados.receitas import RECEITAS
 from ..entrada import aguardar_leitura
@@ -44,7 +50,11 @@ def tela_casa(personagem, escrever=print, ler_acao=None, aguardar=None):
         aguardar()
         continue
       personagem.descansos_usados += 1
-      personagem.curar_totalmente()
+      # Cura pro máximo EFETIVO (com armadura/acessório/encantamento) — curar
+      # só pro máximo base ignorava qualquer bônus de vida/mana máxima.
+      personagem.vida = equipamento.vida_maxima_efetiva(personagem)
+      personagem.mana = equipamento.mana_maxima_efetiva(personagem)
+      personagem.efeitos_ativos.clear()
       escrever(f'{Cor.VERDE}Você descansou e se recuperou completamente!{Cor.RESET}')
       aguardar()
     elif escolha == 1:
@@ -59,23 +69,83 @@ def tela_casa(personagem, escrever=print, ler_acao=None, aguardar=None):
         aguardar()
 
 
+def _custo_cura(quantidade):
+  return max(1, quantidade // 5) if quantidade > 0 else 0
+
+
+def _restaurar_recurso(personagem, escrever, recurso, quantidade):
+  custo = _custo_cura(quantidade)
+  if personagem.moeda_cobre < custo:
+    escrever(f'{Cor.VERMELHO}Você não tem cobres suficientes.{Cor.RESET}')
+    return False
+  personagem.moeda_cobre -= custo
+  if recurso == 'vida':
+    personagem.vida += quantidade
+  else:
+    personagem.mana += quantidade
+  return True
+
+
 def tela_curandeira(personagem, escrever=print, ler_acao=None, entrada_texto=input, aguardar=None):
+  """Curandeira reformulada: a reclamação era ter que restaurar vida e mana
+  separadamente e sempre precisar digitar a quantidade exata. Agora as opções
+  de topo restauram tudo de uma vez, com o custo já calculado — só quem quer
+  economizar cobres restaurando uma quantidade específica precisa digitar
+  algo."""
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    opcoes = [f'Restaurar {Cor.VERMELHO}vida{Cor.RESET} (1 cobre a cada 5 de vida)',
-              f'Restaurar {Cor.AZUL}mana{Cor.RESET} (1 cobre a cada 5 de mana)', 'Voltar']
+    falta_vida = equipamento.vida_maxima_efetiva(personagem) - personagem.vida
+    falta_mana = equipamento.mana_maxima_efetiva(personagem) - personagem.mana
+    custo_vida = _custo_cura(falta_vida)
+    custo_mana = _custo_cura(falta_mana)
+
+    opcoes = [
+      f'Restaurar tudo ({Cor.VERMELHO}vida{Cor.RESET} e {Cor.AZUL}mana{Cor.RESET}) — '
+      f'{custo_vida + custo_mana} cobres',
+      f'Restaurar toda a {Cor.VERMELHO}vida{Cor.RESET} — {custo_vida} cobres',
+      f'Restaurar toda a {Cor.AZUL}mana{Cor.RESET} — {custo_mana} cobres',
+      'Restaurar uma quantidade específica',
+      'Voltar',
+    ]
     escolha = ler_acao(_titulo(personagem, 'Curandeira'), opcoes)
-    if escolha is None or escolha == 2:
+    if escolha is None or escolha == 4:
       return
 
-    recurso = 'vida' if escolha == 0 else 'mana'
+    if escolha in (0, 1, 2):
+      cura_vida = escolha in (0, 1) and falta_vida > 0
+      cura_mana = escolha in (0, 2) and falta_mana > 0
+      if not cura_vida and not cura_mana:
+        escrever(f'{Cor.VERMELHO}Já está no máximo.{Cor.RESET}')
+        aguardar()
+        continue
+
+      custo_total = (custo_vida if cura_vida else 0) + (custo_mana if cura_mana else 0)
+      if not perguntar_sim_nao(f'Isso vai custar {custo_total} cobres. Confirmar?'):
+        continue
+      if personagem.moeda_cobre < custo_total:
+        escrever(f'{Cor.VERMELHO}Você não tem cobres suficientes.{Cor.RESET}')
+        aguardar()
+        continue
+
+      if cura_vida:
+        _restaurar_recurso(personagem, escrever, 'vida', falta_vida)
+      if cura_mana:
+        _restaurar_recurso(personagem, escrever, 'mana', falta_mana)
+      escrever(f'{Cor.VERDE}Recuperado com sucesso!{Cor.RESET}')
+      aguardar()
+      continue
+
+    # Restaurar uma quantidade específica — fluxo antigo, pra quem quiser
+    # economizar cobres curando só uma parte.
+    opcoes_recurso = [f'{Cor.VERMELHO}Vida{Cor.RESET}', f'{Cor.AZUL}Mana{Cor.RESET}', 'Voltar']
+    escolha_recurso = ler_acao('Restaurar quanto de qual recurso?', opcoes_recurso)
+    if escolha_recurso is None or escolha_recurso == 2:
+      continue
+
+    recurso = 'vida' if escolha_recurso == 0 else 'mana'
     cor_recurso = Cor.VERMELHO if recurso == 'vida' else Cor.AZUL
-    if recurso == 'vida':
-      maximo, atual = equipamento.vida_maxima_efetiva(personagem), personagem.vida
-    else:
-      maximo, atual = equipamento.mana_maxima_efetiva(personagem), personagem.mana
-    falta = maximo - atual
+    falta = falta_vida if recurso == 'vida' else falta_mana
     if falta <= 0:
       escrever(f'{cor_recurso}Sua {recurso} já está no máximo.{Cor.RESET}')
       aguardar()
@@ -83,43 +153,80 @@ def tela_curandeira(personagem, escrever=print, ler_acao=None, entrada_texto=inp
 
     quantidade = pedir_numero(f'Quanto de {recurso} deseja restaurar (máx {falta})? -->',
                                minimo=1, maximo=falta, entrada=entrada_texto, saida=escrever)
-    custo = max(1, quantidade // 5)
+    custo = _custo_cura(quantidade)
     if not perguntar_sim_nao(f'Isso vai custar {custo} cobres. Confirmar?'):
       continue
-    if personagem.moeda_cobre < custo:
-      escrever(f'{Cor.VERMELHO}Você não tem cobres suficientes.{Cor.RESET}')
+    if not _restaurar_recurso(personagem, escrever, recurso, quantidade):
       aguardar()
       continue
-
-    personagem.moeda_cobre -= custo
-    if recurso == 'vida':
-      personagem.vida += quantidade
-    else:
-      personagem.mana += quantidade
     escrever(f'{Cor.VERDE}{recurso.capitalize()} restaurada com sucesso!{Cor.RESET}')
     aguardar()
+
+
+def _max_slots_habilidade(personagem):
+  return 3 + personagem.slots_habilidade_comprados
+
+
+def _comprar_slot_habilidade(personagem, escrever, aguardar):
+  if personagem.slots_habilidade_comprados >= len(CUSTOS_SLOT_HABILIDADE):
+    escrever(f'{Cor.CIANO}Você já tem o máximo de slots de habilidade.{Cor.RESET}')
+    aguardar()
+    return
+  custo, campo_moeda = CUSTOS_SLOT_HABILIDADE[personagem.slots_habilidade_comprados]
+  saldo = getattr(personagem, campo_moeda)
+  if saldo < custo:
+    escrever(f'{Cor.VERMELHO}Você não tem {custo} {_NOME_MOEDA[campo_moeda]} suficientes.{Cor.RESET}')
+    aguardar()
+    return
+  setattr(personagem, campo_moeda, saldo - custo)
+  personagem.slots_habilidade_comprados += 1
+  escrever(f'{Cor.VERDE}Novo slot de habilidade desbloqueado! Total: '
+           f'{_max_slots_habilidade(personagem)}.{Cor.RESET}')
+  aguardar()
 
 
 def tela_equipar_habilidades(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
+    max_slots = _max_slots_habilidade(personagem)
+    tem_slot_vazio = len(personagem.habilidades_equipadas) < max_slots
+
     opcoes = [f'Slot {i + 1}: {Cor.BRANCO}{nome}{Cor.RESET} (equipada)'
               for i, nome in enumerate(personagem.habilidades_equipadas)]
     disponiveis = [nome for nome in personagem.habilidades_aprendidas
                    if nome not in personagem.habilidades_equipadas]
+    total_slots_ocupados = len(opcoes)
     for nome in disponiveis:
       h = HABILIDADES[nome]
       efeito = f' | Efeito: {h.efeito}' if h.efeito else ''
-      opcoes.append(f'Trocar por: {Cor.BRANCO}{nome}{Cor.RESET} '
+      verbo = 'Equipar' if tem_slot_vazio else 'Trocar por'
+      opcoes.append(f'{verbo}: {Cor.BRANCO}{nome}{Cor.RESET} '
                      f'({Cor.AZUL}{h.mana} mana{Cor.RESET}, {Cor.VERMELHO}{h.dano_base} dano base{Cor.RESET}'
                      f'{efeito})')
 
-    escolha = ler_acao(_titulo(personagem, 'Habilidades equipadas'), opcoes)
-    if escolha is None or escolha < len(personagem.habilidades_equipadas):
+    indice_comprar_slot = None
+    if personagem.slots_habilidade_comprados < len(CUSTOS_SLOT_HABILIDADE):
+      custo, campo_moeda = CUSTOS_SLOT_HABILIDADE[personagem.slots_habilidade_comprados]
+      indice_comprar_slot = len(opcoes)
+      opcoes.append(f'Comprar slot de habilidade extra — {custo} {_NOME_MOEDA[campo_moeda]}')
+
+    titulo = f'{_titulo(personagem, "Habilidades equipadas")} ({total_slots_ocupados}/{max_slots} slots)'
+    escolha = ler_acao(titulo, opcoes)
+    if escolha is None or escolha < total_slots_ocupados:
       return
 
-    nome_nova = disponiveis[escolha - len(personagem.habilidades_equipadas)]
+    if indice_comprar_slot is not None and escolha == indice_comprar_slot:
+      _comprar_slot_habilidade(personagem, escrever, aguardar)
+      continue
+
+    nome_nova = disponiveis[escolha - total_slots_ocupados]
+    if tem_slot_vazio:
+      personagem.habilidades_equipadas.append(nome_nova)
+      escrever(f'{Cor.VERDE}Equipou {nome_nova}.{Cor.RESET}')
+      aguardar()
+      continue
+
     escolha_slot = ler_acao('Qual slot substituir?', personagem.habilidades_equipadas)
     if escolha_slot is None:
       continue
@@ -189,7 +296,7 @@ def _descricao_armadura(nome):
 
 
 def _descricao_acessorio(nome):
-  acessorio = ACESSORIOS.get(nome) or ACESSORIOS_UNICOS.get(nome)
+  acessorio = ACESSORIOS.get(nome) or ACESSORIOS_UNICOS_POR_NOME.get(nome)
   return acessorio.descricao if acessorio else ''
 
 
@@ -335,6 +442,137 @@ def tela_guia_elemental(personagem, escrever=print, ler_acao=None, aguardar=None
   ]
   quadro = _desenhar_quadro('Guia Elemental', linhas, largura=72)
   ler_acao(quadro, ['Voltar'], com_voltar=False)
+
+
+def _texto_tutorial_classes():
+  return '\n'.join([
+    f'{Cor.BRANCO}CAVALEIRO{Cor.RESET}',
+    'Dano físico e mais vida, a classe mais resistente. Recurso próprio:',
+    f'{Cor.AMARELO}Fúria{Cor.RESET} — começa em 0, PERSISTE entre batalhas (não zera ao',
+    f'vencer/fugir). Ganha {FURIA_GANHA_AO_ATACAR} ao acertar um ataque e '
+    f'{FURIA_GANHA_AO_LEVAR_DANO} ao levar dano.',
+    'Habilidades marcadas com custo em Fúria gastam Fúria em vez de mana —',
+    'guardar Fúria pra soltar o golpe mais forte no momento certo é a',
+    'principal decisão tática da classe.',
+    '',
+    f'{Cor.BRANCO}ARQUEIRO{Cor.RESET}',
+    'Ataques à distância com grande versatilidade elemental. Recurso próprio:',
+    f'{Cor.AMARELO}Foco{Cor.RESET} — também persiste entre batalhas. Ganha '
+    f'{FOCO_GANHO_POR_ATAQUE} ao acertar um',
+    f'ataque, +{FOCO_GANHO_POR_CRITICO_EXTRA} extra se for crítico. Gasto em '
+    'habilidades de custo em Foco.',
+    'Pode trocar o elemento da própria flecha a qualquer momento em batalha',
+    '(ação de graça, não gasta o turno) — ciclando pelos elementos do Guia',
+    'Elemental, pra sempre acertar a fraqueza do inimigo.',
+    f'Também tem acesso a "Marcar Alvo": aplica o efeito {Cor.AMARELO}Marcado{Cor.RESET}, que',
+    f'aumenta em {MARCADO_BONUS_DANO_PERCENTUAL_PADRAO}% todo dano que o alvo recebe '
+    '(de qualquer fonte) enquanto durar.',
+    '',
+    f'{Cor.BRANCO}MAGO{Cor.RESET}',
+    'Dano mágico elemental puro, o mais frágil fisicamente. Recurso próprio:',
+    f'{Cor.AMARELO}Ressonância Arcana{Cor.RESET} — ao contrário de Fúria/Foco, ZERA a cada',
+    'batalha nova. Conjurar um elemento DIFERENTE do último aumenta uma',
+    f'carga (até {RESSONANCIA_ARCANA_MAXIMA}, cada carga dá +'
+    f'{RESSONANCIA_ARCANA_BONUS_POR_STACK}% de dano); repetir o mesmo',
+    'elemento duas vezes seguidas ZERA todo o acúmulo. Ataques físicos não',
+    'contam pra Ressonância. Recompensa alternar entre os elementos em vez',
+    'de bater sempre com o mesmo golpe.',
+  ])
+
+
+def _texto_tutorial_especializacoes():
+  linhas = [f'Escolhida a partir do nível {NIVEL_MINIMO_ESPECIALIZACAO} (uma vez, sem volta),',
+            'cada especialização dá uma passiva permanente e uma habilidade exclusiva:', '']
+  for classe, nomes in ESPECIALIZACOES_POR_CLASSE.items():
+    linhas.append(f'{Cor.BRANCO}{classe}{Cor.RESET}')
+    for nome in nomes:
+      e = ESPECIALIZACOES[nome]
+      linhas.append(f'  {Cor.AMARELO}{e.nome}{Cor.RESET} — {e.descricao} '
+                     f'(habilidade nova: {e.habilidade_nova})')
+    linhas.append('')
+  return '\n'.join(linhas).rstrip()
+
+
+def _texto_tutorial_recursos_e_postura():
+  return '\n'.join([
+    f'{Cor.BRANCO}POSTURA{Cor.RESET} (todas as classes, troca de graça, não gasta o turno)',
+    f'  Ofensiva: {Cor.VERMELHO}+{BONUS_POSTURA_OFENSIVA_DANO}%{Cor.RESET} de dano causado, mas '
+    f'{Cor.VERMELHO}+{BONUS_POSTURA_OFENSIVA_DANO_RECEBIDO}%{Cor.RESET} de dano recebido.',
+    f'  Defensiva: {BONUS_POSTURA_DEFENSIVA_DANO}% de dano causado, mas '
+    f'{Cor.VERDE}-{BONUS_POSTURA_DEFENSIVA_REDUCAO}%{Cor.RESET} de dano recebido.',
+    '',
+    f'{Cor.BRANCO}ATORDOAMENTO{Cor.RESET}',
+    'Acertar a fraqueza elemental de um monstro acumula uma barra oculta',
+    f'(+{ATORDOAMENTO_GANHO_POR_ACERTO_FRACO} por acerto). Ao encher '
+    f'({ATORDOAMENTO_LIMIAR}), o monstro fica Atordoado e',
+    'perde a ação seguinte — mais um motivo pra explorar fraquezas.',
+    '',
+    f'{Cor.BRANCO}ITENS EM BATALHA{Cor.RESET}',
+    'Só é permitido usar 1 item por turno — mas usar item NÃO gasta o',
+    'turno (você ainda pode agir normalmente depois).',
+    '',
+    f'{Cor.BRANCO}GRUPOS DE MONSTROS E ÁREA{Cor.RESET}',
+    f'1 em cada {CHANCE_GRUPO_MONSTROS} encontros com monstros comuns vira um grupo de',
+    '2-3 monstros de uma vez (chefes nunca vêm em grupo). Habilidades do',
+    'tipo "ataque em área" acertam todos os monstros vivos de uma só vez.',
+  ])
+
+
+def _texto_tutorial_efeitos():
+  return '\n'.join([
+    f'{Cor.VERMELHO}Queimadura / Sangramento{Cor.RESET} — 15 de dano por turno.',
+    f'{Cor.VERMELHO}Veneno{Cor.RESET} — 12 de dano por turno.',
+    f'{Cor.VERDE}Regeneração{Cor.RESET} — cura 8% da vida máxima por turno.',
+    f'{Cor.AMARELO}Paralisia / Atordoado{Cor.RESET} — impede agir no turno (a origem muda: '
+    'Paralisia vem de',
+    '  habilidade/ataque, Atordoado vem da barra de acúmulo na fraqueza',
+    '  elemental — mas os dois têm o mesmo efeito de perder a vez).',
+    f'{Cor.AMARELO}Fraqueza{Cor.RESET} — reduz o % de bônus de dano de quem está com o efeito.',
+    f'{Cor.AMARELO}Vulnerabilidade / Marcado{Cor.RESET} — aumenta o % de dano recebido por quem',
+    '  está com o efeito (Marcado é a versão do Arqueiro, mesma mecânica).',
+    '',
+    f'{Cor.CIANO}Detonar{Cor.RESET}: um ataque do elemento Físico (inclusive a flecha do',
+    'Arqueiro trocada pra Físico) detona qualquer dano-por-turno ativo no',
+    'alvo (Queimadura/Sangramento/Veneno), causando de uma vez todo o dano',
+    'restante que ainda faltava.',
+  ])
+
+
+def _texto_tutorial_canalizacao():
+  return '\n'.join([
+    'Algumas habilidades são marcadas como Canalizáveis. Ao usá-las, você',
+    'pode escolher canalizar: um mini-jogo de memória mostra uma sequência',
+    f'de {SIMBOLOS_MINIGAME_CANALIZACAO} letras por um instante, e depois pede pra digitar de volta.',
+    'Quanto mais letras você acertar na ordem certa, maior o bônus de dano',
+    f'aplicado só naquele golpe — até +{BONUS_CANALIZACAO_MAXIMO_PERCENTUAL}% com acerto total.',
+    'Errar tudo não penaliza; só não dá bônus nenhum.',
+  ])
+
+
+_TOPICOS_TUTORIAL = [
+  ('Classes', _texto_tutorial_classes),
+  ('Especializações', _texto_tutorial_especializacoes),
+  ('Recursos e Postura', _texto_tutorial_recursos_e_postura),
+  ('Efeitos de Status', _texto_tutorial_efeitos),
+  ('Habilidades Canalizáveis', _texto_tutorial_canalizacao),
+]
+
+
+def tela_tutorial(personagem, escrever=print, ler_acao=None, aguardar=None):
+  """Texto fixo e igual pra qualquer classe/personagem — o jogador pediu um
+  lugar único com a explicação de tudo (elementos, Fúria, efeitos, classes,
+  especializações etc.) em vez de ter que descobrir jogando."""
+  ler_acao = ler_acao or menu_padrao
+  while True:
+    opcoes = [titulo for titulo, _texto in _TOPICOS_TUTORIAL] + ['Guia Elemental', 'Voltar']
+    escolha = ler_acao(_titulo(personagem, 'Tutorial'), opcoes)
+    if escolha is None or escolha == len(opcoes) - 1:
+      return
+    if escolha == len(_TOPICOS_TUTORIAL):
+      tela_guia_elemental(personagem, escrever, ler_acao, aguardar)
+      continue
+    _titulo_topico, gerar_texto = _TOPICOS_TUTORIAL[escolha]
+    ler_acao(gerar_texto(), ['Voltar'], com_voltar=False)
 
 
 def _resumo_missoes_ativas(personagem):

@@ -2,7 +2,7 @@
 voltavam pro menu (que limpa a tela) sem dar tempo de ler nada."""
 
 from rpg.modelos.personagem import Personagem
-from rpg.sistemas import cidade
+from rpg.sistemas import cidade, equipamento
 
 
 def _personagem():
@@ -20,12 +20,14 @@ def test_mestre_habusken_pausa_ao_rejeitar_jogador_sem_boss_derrotado():
   assert len(chamadas_aguardar) >= 1
 
 
-def test_curandeira_pausa_quando_nao_tem_moedas():
+def test_curandeira_pausa_quando_nao_tem_moedas(monkeypatch):
   personagem = _personagem()
+  personagem.vida -= 30  # senão "Restaurar tudo" nem chega a custar nada
   personagem.moeda_cobre = 0
+  monkeypatch.setattr(cidade, 'perguntar_sim_nao', lambda *_a, **_k: True)
   chamadas_aguardar = []
 
-  respostas_menu = iter([0, None])  # escolhe "Restaurar vida", depois sai
+  respostas_menu = iter([0, None])  # escolhe "Restaurar tudo", depois sai
 
   def _fake_menu(_titulo, _opcoes, **_kw):
     return next(respostas_menu)
@@ -36,6 +38,43 @@ def test_curandeira_pausa_quando_nao_tem_moedas():
       aguardar=lambda: chamadas_aguardar.append(1))
 
   assert len(chamadas_aguardar) >= 1
+
+
+def test_curandeira_restaurar_tudo_cura_vida_e_mana_sem_pedir_quantidade(monkeypatch):
+  """Reformulação pedida pelo usuário: antes era preciso ir na curandeira duas
+  vezes (vida, depois mana) e digitar a quantidade toda vez, mesmo quando só
+  se queria a cura completa. Agora uma única opção cura os dois de uma vez."""
+  personagem = _personagem()
+  personagem.vida -= 30
+  personagem.mana -= 20
+  personagem.moeda_cobre = 1000
+  monkeypatch.setattr(cidade, 'perguntar_sim_nao', lambda *_a, **_k: True)
+
+  respostas_menu = iter([0, None])  # escolhe "Restaurar tudo", depois sai
+  cidade.tela_curandeira(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, _o, **_k: next(respostas_menu),
+      aguardar=lambda: None)
+
+  assert personagem.vida == equipamento.vida_maxima_efetiva(personagem)
+  assert personagem.mana == equipamento.mana_maxima_efetiva(personagem)
+
+
+def test_curandeira_restaurar_so_vida_nao_mexe_na_mana(monkeypatch):
+  personagem = _personagem()
+  personagem.vida -= 30
+  personagem.mana -= 20
+  personagem.moeda_cobre = 1000
+  monkeypatch.setattr(cidade, 'perguntar_sim_nao', lambda *_a, **_k: True)
+
+  respostas_menu = iter([1, None])  # escolhe "Restaurar toda a vida", depois sai
+  cidade.tela_curandeira(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, _o, **_k: next(respostas_menu),
+      aguardar=lambda: None)
+
+  assert personagem.vida == equipamento.vida_maxima_efetiva(personagem)
+  assert personagem.mana == equipamento.mana_maxima_efetiva(personagem) - 20
 
 
 def test_mestre_habusken_apaga_a_tela_antes_de_pedir_a_sequencia():
@@ -290,6 +329,29 @@ def test_renovar_quadro_cobra_moedas():
                       ler_acao=ler_acao, aguardar=lambda: None, _quadros_cache={})
 
   assert personagem.moeda_cobre == saldo_antes - 100
+
+
+def test_descansar_cura_ate_o_maximo_efetivo_com_buffs():
+  """Regressão: descansar curava só até `vida_maxima`/`mana_maxima` base,
+  ignorando bônus de armadura/acessório/encantamento — o personagem saía do
+  descanso sem estar de fato "cheio"."""
+  personagem = _personagem()
+  personagem.armaduras_guardadas = ['Armadura de Couro']  # 10% a mais de vida
+  ler_acao = _fake_menu_sequencia([0, None])  # descansa, depois sai
+
+  # equipa a armadura primeiro pra já valer no descanso
+  from rpg.sistemas import equipamento
+  personagem.armadura_equipada = 'Armadura de Couro'
+  personagem.armaduras_guardadas = []
+  vida_max_efetiva = equipamento.vida_maxima_efetiva(personagem)
+  personagem.vida = 1
+  personagem.mana = 1
+
+  cidade.tela_casa(personagem, escrever=lambda *_a, **_k: None,
+                    ler_acao=ler_acao, aguardar=lambda: None)
+
+  assert personagem.vida == vida_max_efetiva
+  assert vida_max_efetiva > personagem.vida_maxima  # confirma que o teste testa o bônus de verdade
 
 
 def test_status_mostra_chance_de_critico():

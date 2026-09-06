@@ -75,3 +75,38 @@ def test_resolver_acessorios_ignora_nome_nao_encontrado():
   personagem = _personagem()
   personagem.acessorios_equipados = ['Isso não existe']
   assert equipamento.resolver_acessorios(personagem) == []
+
+
+def test_acessorio_unico_de_chefe_resolve_pelo_proprio_nome():
+  """Regressão: ACESSORIOS_UNICOS é indexado pelo nome do CHEFE ('Goblin
+  Xamã'), mas o personagem guarda e equipa pelo nome do ITEM ('Cajado do
+  Xamã') — resolver pela chave errada fazia o acessório "sumir" (não
+  aparecia como equipado e nenhum bônus dele valia) mesmo já equipado."""
+  personagem = _personagem()
+  personagem.acessorios_equipados = ['Cajado do Xamã']  # dropado pelo Goblin Xamã
+
+  resolvidos = equipamento.resolver_acessorios(personagem)
+
+  assert len(resolvidos) == 1
+  assert resolvidos[0].nome == 'Cajado do Xamã'
+  assert equipamento.exp_extra_acessorio(personagem) == 15
+
+
+def test_novos_efeitos_de_acessorio_somam_como_os_demais(monkeypatch):
+  from rpg.dados.itens import Acessorio
+  personagem = _personagem()
+  personagem.acessorios_equipados = ['A', 'B', 'C', 'D']
+  monkeypatch.setattr(equipamento, 'ACESSORIOS', {
+    'A': Acessorio('A', 'teste', 'resistencia_efeito', 10),
+    'B': Acessorio('B', 'teste', 'vida_ao_matar', 5),
+    'C': Acessorio('C', 'teste', 'contra_ataque', 15),
+    'D': Acessorio('D', 'teste', 'furia_extra', 3),
+  })
+  assert equipamento.resistencia_efeito_acessorio(personagem) == 10
+  assert equipamento.vida_ao_matar_acessorio(personagem) == 5
+  assert equipamento.contra_ataque_acessorio(personagem) == 15
+  assert equipamento.furia_extra_acessorio(personagem) == 3
+
+
+def test_fome_lenta_soma_zero_sem_acessorio():
+  assert equipamento.fome_lenta_acessorio(_personagem()) == 0

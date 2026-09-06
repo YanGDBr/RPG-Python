@@ -8,7 +8,8 @@ tudo passa por estas funções, então nenhum bônus fica esquecido.
 
 from ..config import Cor
 from ..dados.classes import CLASSES
-from ..dados.itens import ACESSORIOS, ACESSORIOS_UNICOS, ARMADURAS, ARMADURAS_UNICAS, ARMAS, ARMAS_LENDARIAS
+from ..dados.itens import (ACESSORIOS, ACESSORIOS_UNICOS_POR_NOME, ARMADURAS, ARMADURAS_UNICAS, ARMAS,
+                            ARMAS_LENDARIAS)
 
 
 def resolver_arma(personagem):
@@ -38,7 +39,7 @@ def resolver_acessorios(personagem):
   padrão, 1 slot, e pode comprar até 3 a mais (ver CUSTOS_SLOT_ACESSORIO)."""
   resolvidos = []
   for nome in personagem.acessorios_equipados:
-    acessorio = ACESSORIOS.get(nome) or ACESSORIOS_UNICOS.get(nome)
+    acessorio = ACESSORIOS.get(nome) or ACESSORIOS_UNICOS_POR_NOME.get(nome)
     if acessorio:
       resolvidos.append(acessorio)
   return resolvidos
@@ -96,6 +97,32 @@ def ouro_extra_acessorio(personagem):
 
 def regeneracao_acessorio(personagem):
   return _soma_acessorios(personagem, 'regeneracao')
+
+
+def resistencia_efeito_acessorio(personagem):
+  """Reduz a chance de um ataque de monstro grudar um efeito de status em
+  quem usa (subtraído de CHANCE_APLICAR_EFEITO_STATUS)."""
+  return _soma_acessorios(personagem, 'resistencia_efeito')
+
+
+def vida_ao_matar_acessorio(personagem):
+  """% da vida máxima curada sempre que o golpe do personagem mata o alvo."""
+  return _soma_acessorios(personagem, 'vida_ao_matar')
+
+
+def contra_ataque_acessorio(personagem):
+  """Chance (%) de revidar com um golpe ao esquivar de um ataque."""
+  return _soma_acessorios(personagem, 'contra_ataque')
+
+
+def furia_extra_acessorio(personagem):
+  """Fúria/Foco extra ganhos a cada ataque, além do ganho normal da classe."""
+  return _soma_acessorios(personagem, 'furia_extra')
+
+
+def fome_lenta_acessorio(personagem):
+  """Ações extras antes da fome desgastar de novo (soma a ACOES_POR_DESGASTE_FOME)."""
+  return _soma_acessorios(personagem, 'fome_lenta')
 
 
 def efeitos_iniciais_de_batalha_acessorios(personagem):

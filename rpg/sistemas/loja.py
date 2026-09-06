@@ -63,42 +63,55 @@ def loja_armaduras(personagem, escrever=print, ler_acao=None, aguardar=None):
     aguardar()
 
 
-def loja_itens(personagem, escrever=print, ler_acao=None, aguardar=None):
+def loja_acessorios(personagem, escrever=print, ler_acao=None, aguardar=None):
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   while True:
-    opcoes = ([f'[Acessório] {a.nome} — {a.preco} cobres ({a.descricao}) — equipe em Personagem'
-               for a in CATALOGO_ACESSORIOS] +
-              [f'[Item] {i.nome} — {i.preco} cobres ({i.descricao}) — use no Inventário'
-               for i in CATALOGO_ITENS_CONSUMIVEIS] +
-              [f'[Comida] {c} — {PRECO_COMIDA} cobres' for c in COMIDAS_VENDIDAS])
-    escolha = ler_acao(_titulo(personagem, 'Loja de Itens/Acessórios/Comida'), opcoes)
+    opcoes = [f'{a.nome} — {a.preco} cobres ({a.descricao}) — equipe em Personagem'
+              for a in CATALOGO_ACESSORIOS]
+    escolha = ler_acao(_titulo(personagem, 'Loja de Acessórios'), opcoes)
     if escolha is None:
       return
+    acessorio = CATALOGO_ACESSORIOS[escolha]
+    if (acessorio.nome in personagem.acessorios_guardados
+        or acessorio.nome in personagem.acessorios_equipados):
+      escrever(f'{Cor.AMARELO}Você já tem esse acessório.{Cor.RESET}')
+      aguardar()
+      continue
+    if _pagar(personagem, acessorio.preco, escrever):
+      personagem.acessorios_guardados.append(acessorio.nome)
+      escrever(f'{Cor.VERDE}Você comprou {acessorio.nome}. Equipe-o em Personagem.{Cor.RESET}')
+    aguardar()
 
-    total_acessorios = len(CATALOGO_ACESSORIOS)
-    total_itens = len(CATALOGO_ITENS_CONSUMIVEIS)
 
-    if escolha < total_acessorios:
-      acessorio = CATALOGO_ACESSORIOS[escolha]
-      if (acessorio.nome in personagem.acessorios_guardados
-          or acessorio.nome in personagem.acessorios_equipados):
-        escrever(f'{Cor.AMARELO}Você já tem esse acessório.{Cor.RESET}')
-        aguardar()
-        continue
-      if _pagar(personagem, acessorio.preco, escrever):
-        personagem.acessorios_guardados.append(acessorio.nome)
-        escrever(f'{Cor.VERDE}Você comprou {acessorio.nome}. Equipe-o em Personagem.{Cor.RESET}')
-    elif escolha < total_acessorios + total_itens:
-      item = CATALOGO_ITENS_CONSUMIVEIS[escolha - total_acessorios]
-      if _pagar(personagem, item.preco, escrever):
-        personagem.adicionar_item(item.nome)
-        escrever(f'{Cor.VERDE}Você comprou {item.nome}.{Cor.RESET}')
-    else:
-      nome_comida = COMIDAS_VENDIDAS[escolha - total_acessorios - total_itens]
-      if _pagar(personagem, PRECO_COMIDA, escrever):
-        personagem.comidas[nome_comida] = personagem.comidas.get(nome_comida, 0) + 1
-        escrever(f'{Cor.VERDE}Você comprou {nome_comida}.{Cor.RESET}')
+def loja_itens_consumiveis(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  while True:
+    opcoes = [f'{i.nome} — {i.preco} cobres ({i.descricao}) — use no Inventário'
+              for i in CATALOGO_ITENS_CONSUMIVEIS]
+    escolha = ler_acao(_titulo(personagem, 'Loja de Itens'), opcoes)
+    if escolha is None:
+      return
+    item = CATALOGO_ITENS_CONSUMIVEIS[escolha]
+    if _pagar(personagem, item.preco, escrever):
+      personagem.adicionar_item(item.nome)
+      escrever(f'{Cor.VERDE}Você comprou {item.nome}.{Cor.RESET}')
+    aguardar()
+
+
+def loja_comidas(personagem, escrever=print, ler_acao=None, aguardar=None):
+  ler_acao = ler_acao or menu_padrao
+  aguardar = aguardar or aguardar_leitura
+  while True:
+    opcoes = [f'{c} — {PRECO_COMIDA} cobres' for c in COMIDAS_VENDIDAS]
+    escolha = ler_acao(_titulo(personagem, 'Loja de Comidas'), opcoes)
+    if escolha is None:
+      return
+    nome_comida = COMIDAS_VENDIDAS[escolha]
+    if _pagar(personagem, PRECO_COMIDA, escrever):
+      personagem.comidas[nome_comida] = personagem.comidas.get(nome_comida, 0) + 1
+      escrever(f'{Cor.VERDE}Você comprou {nome_comida}.{Cor.RESET}')
     aguardar()
 
 

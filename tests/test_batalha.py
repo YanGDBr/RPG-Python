@@ -232,9 +232,9 @@ def test_habilidade_ignora_resistencia_trata_resistencia_como_neutra():
                                        elemento='Fisico', ignora_resistencia=True)
   personagem = _personagem_cavaleiro()
 
-  assert (batalha._multiplicador_elemental_efetivo(habilidade_normal, monstro) <
-          batalha._multiplicador_elemental_efetivo(habilidade_perfurante, monstro))
-  assert batalha._multiplicador_elemental_efetivo(habilidade_perfurante, monstro) == 1.0
+  assert (batalha._multiplicador_elemental_efetivo(personagem, habilidade_normal, monstro) <
+          batalha._multiplicador_elemental_efetivo(personagem, habilidade_perfurante, monstro))
+  assert batalha._multiplicador_elemental_efetivo(personagem, habilidade_perfurante, monstro) == 1.0
 
 
 def test_habilidade_sempre_critico_forca_critico():
@@ -285,25 +285,6 @@ def test_especializacao_berserker_aumenta_dano_com_vida_baixa():
   personagem.vida = round(personagem.vida_maxima * 0.4)
   dano_vida_baixa = batalha.prever_dano(personagem, habilidade, monstro)
   assert dano_vida_baixa > dano_vida_cheia
-
-
-def test_autobatalha_ataca_sozinho_por_varios_turnos_sem_pedir_nova_acao():
-  """A autobatalha deve resolver vários turnos usando sempre a melhor
-  habilidade disponível, sem voltar a perguntar a ação a cada turno."""
-  random.seed(2)
-  personagem = _personagem_cavaleiro()
-  chamadas_menu = []
-
-  def _fake_menu(_titulo, opcoes, **_kw):
-    chamadas_menu.append(1)
-    return next(i for i, label in enumerate(opcoes) if 'Autobatalha' in label)
-
-  resultado, monstro = batalha.batalhar(
-      personagem, MONSTROS['Kobold'], escrever=lambda *_a, **_k: None,
-      ler_acao=_fake_menu, aguardar=lambda: None)
-
-  assert resultado == batalha.ResultadoBatalha.VITORIA
-  assert len(chamadas_menu) == 1   # só ativou a autobatalha uma vez — o resto foi sozinho
 
 
 def test_especializacao_atirador_de_elite_aumenta_chance_de_critico():
@@ -377,3 +358,338 @@ def test_efeito_de_monstro_e_probabilistico_e_avisa_quando_resiste(monkeypatch):
 
   assert personagem.efeitos_ativos == []
   assert any('resistiu' in m for m in mensagens)
+
+
+def _personagem_arqueiro():
+  p = Personagem(nome='teste', classe='Arqueiro', raca='Humano')
+  p.habilidades_equipadas = list(CLASSES['Arqueiro'].habilidades_iniciais)
+  return p
+
+
+# ------------------------------------------------------- Grupos de monstros
+
+def test_batalha_com_grupo_devolve_lista_e_termina_quando_todos_morrem():
+  personagem = _personagem_cavaleiro()
+  personagem.poder = 500
+  grupo = [MONSTROS['Slime'], MONSTROS['Slime']]
+
+  resultado, monstros = batalha.batalhar(
+      personagem, grupo, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda titulo, opcoes, **kw: 0, aguardar=lambda: None)
+
+  assert resultado == batalha.ResultadoBatalha.VITORIA
+  assert isinstance(monstros, list)
+  assert len(monstros) == 2
+  assert all(not m.vivo for m in monstros)
+
+
+def test_batalha_solo_continua_devolvendo_um_unico_monstro():
+  """Backward-compat: passar um MonstroBase avulso (não lista) continua
+  devolvendo um MonstroBatalha avulso, não uma lista de 1."""
+  personagem = _personagem_cavaleiro()
+  personagem.poder = 500
+
+  resultado, monstro = batalha.batalhar(
+      personagem, MONSTROS['Kobold'], escrever=lambda *_a, **_k: None,
+      ler_acao=lambda titulo, opcoes, **kw: 0, aguardar=lambda: None)
+
+  assert resultado == batalha.ResultadoBatalha.VITORIA
+  assert not isinstance(monstro, list)
+  assert monstro.base.nome == 'Kobold'
+
+
+def test_habilidade_em_area_acerta_todos_os_alvos_vivos():
+  from rpg.modelos.habilidade import Habilidade
+  personagem = _personagem_cavaleiro()
+  alvos = [MonstroBatalha.instanciar(MONSTROS['Slime']), MonstroBatalha.instanciar(MONSTROS['Kobold'])]
+  habilidade = Habilidade(nome='Teste Área', mana=0, dano_base=1000, tipo='ataque_area')
+
+  batalha.personagem_ataca_alvos(personagem, habilidade, alvos, lambda *_a, **_k: None)
+
+  assert all(not a.vivo for a in alvos)  # 1000 de dano base mata os dois
+
+
+def test_ataque_normal_em_grupo_mira_so_o_primeiro_alvo_da_lista():
+  from rpg.modelos.habilidade import Habilidade
+  personagem = _personagem_cavaleiro()
+  alvo_1 = MonstroBatalha.instanciar(MONSTROS['Slime'])
+  alvo_2 = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  habilidade = Habilidade(nome='Teste', mana=0, dano_base=1000, tipo='ataque')
+
+  batalha.personagem_ataca_alvos(personagem, habilidade, [alvo_1, alvo_2], lambda *_a, **_k: None)
+
+  assert not alvo_1.vivo
+  assert alvo_2.vivo  # não foi tocado
+
+
+# ------------------------------------------------------------------- Foco
+
+def test_foco_do_arqueiro_aumenta_ao_atacar():
+  personagem = _personagem_arqueiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  assert personagem.foco_arqueiro == 0
+
+  from rpg.dados.habilidades import HABILIDADES
+  batalha.personagem_ataca(personagem, HABILIDADES['Flecha Rápida'], monstro, lambda *_a, **_k: None)
+
+  assert personagem.foco_arqueiro > 0
+
+
+def test_foco_nao_aumenta_pra_outras_classes():
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  from rpg.dados.habilidades import HABILIDADES
+  batalha.personagem_ataca(personagem, HABILIDADES['Investida'], monstro, lambda *_a, **_k: None)
+  assert personagem.foco_arqueiro == 0
+
+
+# --------------------------------------------------------------- Marcado
+
+def test_marcado_aumenta_o_dano_recebido_pelo_alvo():
+  from rpg.modelos.habilidade import Habilidade
+  personagem = _personagem_arqueiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  habilidade_neutra = Habilidade(nome='Teste', mana=0, dano_base=100, tipo='ataque', elemento='Fisico')
+
+  from rpg.sistemas import efeitos
+  dano_sem_marca = batalha.prever_dano(personagem, habilidade_neutra, monstro)
+  efeitos.aplicar_efeito(monstro.efeitos_ativos, 'Marcado', 3, 25)
+  dano_com_marca = batalha.prever_dano(personagem, habilidade_neutra, monstro)
+
+  assert dano_com_marca > dano_sem_marca
+
+
+# ------------------------------------------------------- Flecha elemental
+
+def test_arqueiro_pode_trocar_elemento_da_flecha_de_graca():
+  from rpg.modelos.habilidade import Habilidade
+  personagem = _personagem_arqueiro()
+  habilidade_generica = Habilidade(nome='Teste', mana=0, dano_base=10, tipo='ataque', elemento='Fisico')
+
+  assert batalha._elemento_efetivo(personagem, habilidade_generica) == 'Fisico'
+  personagem.elemento_flecha_atual = 'Gelo'
+  assert batalha._elemento_efetivo(personagem, habilidade_generica) == 'Gelo'
+
+
+def test_troca_de_elemento_da_flecha_nao_gasta_turno():
+  personagem = _personagem_arqueiro()
+  personagem.poder = 500
+  # labels: [0,1,2]=habilidades, 3=postura, 4=trocar flecha, depois ataca e vence
+  respostas = iter([4, 0])
+
+  resultado, _monstro = batalha.batalhar(
+      personagem, MONSTROS['Kobold'], escrever=lambda *_a, **_k: None,
+      ler_acao=lambda *_a, **_k: next(respostas), aguardar=lambda: None)
+
+  assert resultado == batalha.ResultadoBatalha.VITORIA
+  assert personagem.vida == personagem.vida_maxima  # o monstro nunca chegou a atacar
+  assert personagem.elemento_flecha_atual != 'Fisico'
+
+
+def test_habilidade_de_elemento_fixo_nao_e_afetada_pela_troca():
+  from rpg.modelos.habilidade import Habilidade
+  personagem = _personagem_arqueiro()
+  personagem.elemento_flecha_atual = 'Gelo'
+  habilidade_com_elemento_proprio = Habilidade(nome='Teste', mana=0, dano_base=10, tipo='ataque', elemento='Sombrio')
+  assert batalha._elemento_efetivo(personagem, habilidade_com_elemento_proprio) == 'Sombrio'
+
+
+# ------------------------------------------------------ Ressonância Arcana
+
+def test_ressonancia_arcana_sobe_ao_variar_elemento():
+  personagem = _personagem_mago()
+  from rpg.dados.habilidades import HABILIDADES
+  batalha._atualizar_ressonancia_arcana(personagem, HABILIDADES['Chamas'])  # Fogo
+  assert personagem.ressonancia_arcana == 1
+  batalha._atualizar_ressonancia_arcana(personagem, HABILIDADES['Raio'])  # Elétrico
+  assert personagem.ressonancia_arcana == 2
+
+
+def test_ressonancia_arcana_zera_ao_repetir_elemento():
+  personagem = _personagem_mago()
+  from rpg.dados.habilidades import HABILIDADES
+  batalha._atualizar_ressonancia_arcana(personagem, HABILIDADES['Chamas'])  # Fogo
+  batalha._atualizar_ressonancia_arcana(personagem, HABILIDADES['Chamas'])  # Fogo de novo
+  assert personagem.ressonancia_arcana == 0
+
+
+def test_ressonancia_arcana_aumenta_o_dano_do_mago():
+  personagem = _personagem_mago()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  from rpg.dados.habilidades import HABILIDADES
+  habilidade = HABILIDADES['Missil Mágico']
+
+  dano_sem_stacks = batalha.prever_dano(personagem, habilidade, monstro)
+  personagem.ressonancia_arcana = 3
+  dano_com_stacks = batalha.prever_dano(personagem, habilidade, monstro)
+
+  assert dano_com_stacks > dano_sem_stacks
+
+
+# ------------------------------------------------------ Item por turno
+
+def test_so_pode_usar_um_item_por_turno_sem_gastar_turno(monkeypatch):
+  personagem = _personagem_cavaleiro()
+  personagem.pocoes['Vida'] = 5
+  personagem.vida = 1  # sobrevive fácil, mesmo sem curar
+  # índices do menu principal: [0,1,2]=habilidades, 3=postura, 4=itens, 5=pular
+  # usa item (cura, sub-menu escolhe a poção no índice 0), tenta usar de novo
+  # (bloqueado, de graça, sem sub-menu), pula a vez.
+  respostas = iter([4, 0, 4, 5])
+  chamadas_monstro_ataca = []
+  original = batalha.monstro_ataca
+  monkeypatch.setattr(batalha, 'monstro_ataca',
+                      lambda *a, **k: (chamadas_monstro_ataca.append(1), original(*a, **k))[1])
+
+  try:
+    batalha.batalhar(personagem, MONSTROS['Kobold'], escrever=lambda *_a, **_k: None,
+                      ler_acao=lambda *_a, **_k: next(respostas), aguardar=lambda: None)
+  except StopIteration:
+    pass  # só nos importa o que aconteceu no primeiro turno, scriptado acima
+
+  # só "pular" (a 4ª resposta) devia ter passado a vez pro monstro — as duas
+  # tentativas de item (uma bem-sucedida, uma bloqueada) não contam turno.
+  assert len(chamadas_monstro_ataca) == 1
+
+
+# --------------------------------------------------------- Atordoamento
+
+def test_bater_na_fraqueza_repetidamente_atordoa_o_monstro():
+  from rpg.config import ATORDOAMENTO_GANHO_POR_ACERTO_FRACO, ATORDOAMENTO_LIMIAR
+  from rpg.modelos.habilidade import Habilidade
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Slime'])  # fraqueza Fogo
+  # habilidade sintética de Fogo, pra não depender de qual está equipada
+  habilidade_fogo = Habilidade(nome='Teste Fogo', mana=0, dano_base=1, tipo='ataque', elemento='Fogo')
+
+  golpes_necessarios = -(-ATORDOAMENTO_LIMIAR // ATORDOAMENTO_GANHO_POR_ACERTO_FRACO)
+  for _ in range(golpes_necessarios):
+    if not monstro.vivo:
+      break
+    batalha.personagem_ataca(personagem, habilidade_fogo, monstro, lambda *_a, **_k: None)
+
+  assert any(e['nome'] == 'Atordoado' for e in monstro.efeitos_ativos)
+
+
+def test_monstro_atordoado_perde_a_vez():
+  from rpg.sistemas import efeitos
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  efeitos.aplicar_efeito(monstro.efeitos_ativos, 'Atordoado', 1)
+  vida_antes = personagem.vida
+
+  fugiu = batalha.monstro_ataca(personagem, monstro, lambda *_a, **_k: None)
+
+  assert fugiu is False
+  assert personagem.vida == vida_antes  # não atacou
+
+
+# -------------------------------------------------------- Fase de fúria
+
+def test_fase_furiosa_ativa_a_meia_vida_e_aumenta_o_dano(monkeypatch):
+  from rpg.modelos.monstro import MonstroBase
+  base = MonstroBase(nome='Chefe Teste', vida_maxima=100, ataque_min=50, ataque_max=50,
+                      nivel=10, chefe=True, tem_fase_furiosa=True)
+  monstro = MonstroBatalha.instanciar(base)
+  personagem = _personagem_cavaleiro()
+
+  monstro.vida = 50  # exatamente na metade
+  batalha._verificar_fase_furiosa(monstro, lambda *_a, **_k: None)
+  assert monstro.fase_furiosa_ativa is True
+
+  monkeypatch.setattr(batalha.random, 'randint', lambda a, b: 50)  # sem crítico/esquiva
+  vida_antes = personagem.vida
+  batalha.monstro_ataca(personagem, monstro, lambda *_a, **_k: None)
+  dano_com_fase = vida_antes - personagem.vida
+
+  monstro2 = MonstroBatalha.instanciar(base)
+  personagem2 = _personagem_cavaleiro()
+  batalha.monstro_ataca(personagem2, monstro2, lambda *_a, **_k: None)
+  dano_sem_fase = personagem2.vida_maxima - personagem2.vida
+
+  assert dano_com_fase > dano_sem_fase
+
+
+# ------------------------------------------------------- Canalização
+
+def test_minigame_canalizacao_conta_acertos_na_sequencia(monkeypatch):
+  sequencia_fixa = iter('ABCD')
+  monkeypatch.setattr(batalha.random, 'choice', lambda _seq: next(sequencia_fixa))
+  acertos, total = batalha._minigame_canalizacao(
+      escrever=lambda *_a, **_k: None, limpar=lambda: None, esperar=lambda _s: None,
+      entrada_texto=lambda _p: 'ABCD')
+  assert acertos == total == 4
+
+
+def test_habilidade_canalizavel_aplica_bonus_pendente_no_proximo_golpe(monkeypatch):
+  from rpg.modelos.habilidade import Habilidade
+  personagem = _personagem_cavaleiro()
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  habilidade = Habilidade(nome='Teste', mana=0, dano_base=100, tipo='ataque')
+
+  dano_normal = batalha.prever_dano(personagem, habilidade, monstro)
+  personagem.bonus_canalizacao_pendente = 60
+  dano_canalizado = batalha.prever_dano(personagem, habilidade, monstro)
+  assert dano_canalizado > dano_normal
+
+  # some sozinho depois do golpe
+  batalha.personagem_ataca(personagem, habilidade, monstro, lambda *_a, **_k: None)
+  assert personagem.bonus_canalizacao_pendente == 0
+
+
+# ---------------------------------------------------- Novos acessórios
+
+def test_resistencia_efeito_reduz_chance_de_grudar_status(monkeypatch):
+  assert batalha._efeito_grudou(bonus_resistencia=100) is False  # sempre resiste
+  monkeypatch.setattr(batalha.random, 'randint', lambda a, b: 1)
+  assert batalha._efeito_grudou(bonus_resistencia=0) is True
+
+
+def test_vida_ao_matar_cura_personagem_ao_finalizar_o_alvo(monkeypatch):
+  from rpg.dados.itens import Acessorio
+  personagem = _personagem_cavaleiro()
+  personagem.vida = 1
+  personagem.acessorios_equipados = ['Relíquia de Teste']
+  monkeypatch.setattr('rpg.sistemas.equipamento.ACESSORIOS', {
+    'Relíquia de Teste': Acessorio('Relíquia de Teste', 'teste', 'vida_ao_matar', 50),
+  })
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  monstro.vida = 1  # qualquer golpe mata
+  from rpg.modelos.habilidade import Habilidade
+  habilidade = Habilidade(nome='Teste', mana=0, dano_base=100, tipo='ataque')
+
+  batalha.personagem_ataca(personagem, habilidade, monstro, lambda *_a, **_k: None)
+
+  assert personagem.vida > 1
+
+
+def test_contra_ataque_causa_dano_ao_esquivar(monkeypatch):
+  from rpg.dados.itens import Acessorio
+  personagem = _personagem_cavaleiro()
+  personagem.acessorios_equipados = ['Espinho de Teste']
+  monkeypatch.setattr('rpg.sistemas.equipamento.ACESSORIOS', {
+    'Espinho de Teste': Acessorio('Espinho de Teste', 'teste', 'contra_ataque', 100),
+  })
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+  vida_antes = monstro.vida
+  monkeypatch.setattr(batalha.random, 'randint', lambda a, b: 1)  # esquiva sempre, contra-ataca sempre
+
+  batalha.monstro_ataca(personagem, monstro, lambda *_a, **_k: None)
+
+  assert monstro.vida < vida_antes
+
+
+def test_furia_extra_do_acessorio_soma_ao_ganho_normal(monkeypatch):
+  from rpg.config import FURIA_GANHA_AO_ATACAR
+  from rpg.dados.habilidades import HABILIDADES
+  from rpg.dados.itens import Acessorio
+  personagem = _personagem_cavaleiro()
+  personagem.acessorios_equipados = ['Bracelete de Teste']
+  monkeypatch.setattr('rpg.sistemas.equipamento.ACESSORIOS', {
+    'Bracelete de Teste': Acessorio('Bracelete de Teste', 'teste', 'furia_extra', 20),
+  })
+  monstro = MonstroBatalha.instanciar(MONSTROS['Kobold'])
+
+  batalha.personagem_ataca(personagem, HABILIDADES['Investida'], monstro, lambda *_a, **_k: None)
+
+  assert personagem.furia_cavaleiro >= FURIA_GANHA_AO_ATACAR + 20

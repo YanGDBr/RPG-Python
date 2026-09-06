@@ -39,7 +39,8 @@ def aplicar_desgaste_fome(personagem, escrever):
   descia uma vez no login e nunca mais fazia diferença nenhuma. Só desgasta de
   fato 1 a cada ACOES_POR_DESGASTE_FOME ações, senão cai rápido demais."""
   personagem.acoes_desde_desgaste_fome += 1
-  if personagem.acoes_desde_desgaste_fome < ACOES_POR_DESGASTE_FOME:
+  limite = ACOES_POR_DESGASTE_FOME + equipamento.fome_lenta_acessorio(personagem)
+  if personagem.acoes_desde_desgaste_fome < limite:
     return
   personagem.acoes_desde_desgaste_fome = 0
   personagem.fome = max(0, personagem.fome - 1)

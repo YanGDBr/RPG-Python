@@ -91,11 +91,6 @@ ENCANTAMENTO_MATERIAL = 'Cristal Arcano'
 DESCONTO_OFERTA_DIA = 30
 QUANTIDADE_OFERTAS_DIA = 3
 
-# Autobatalha: joga sozinho por N turnos usando sempre a habilidade disponível
-# de maior dano previsto, cancelando cedo se a vida ficar baixa demais.
-AUTOBATALHA_TURNOS = 5
-AUTOBATALHA_VIDA_MINIMA_PERCENTUAL = 30
-
 # Reputação da guilda: cada tier libera missões melhores.
 REPUTACAO_TIERS = [(0, 'Novato'), (100, 'Experiente'), (300, 'Veterano'), (600, 'Lendário')]
 
@@ -139,3 +134,47 @@ MAX_SLOTS_ACESSORIO = 1 + len(CUSTOS_SLOT_ACESSORIO)
 NIVEL_PERIGO_VERDE = 1
 NIVEL_PERIGO_AMARELO = 2
 NIVEL_PERIGO_VERMELHO = 3
+
+# Slots extras de habilidade: começa com 3 (as iniciais da classe), cada
+# compra libera mais um (até 2 compras = 5 no total).
+CUSTOS_SLOT_HABILIDADE = [
+  (300, 'moeda_cobre'),
+  (30, 'moeda_prata'),
+]
+MAX_SLOTS_HABILIDADE = 3 + len(CUSTOS_SLOT_HABILIDADE)
+
+# Foco do Arqueiro: recurso próprio, ganho ao atacar (mais se crítico),
+# gasto em habilidades de "custo_foco" — paralelo à Fúria do Cavaleiro.
+FOCO_ARQUEIRO_MAXIMO = 100
+FOCO_GANHO_POR_ATAQUE = 8
+FOCO_GANHO_POR_CRITICO_EXTRA = 12
+
+# Marcar Alvo (Arqueiro): bônus percentual de dano que QUALQUER ataque
+# recebe contra um alvo marcado — funciona como a Vulnerabilidade, só que
+# aplicada por uma habilidade específica do Arqueiro.
+MARCADO_BONUS_DANO_PERCENTUAL_PADRAO = 25
+
+# Ressonância Arcana do Mago: cada vez que conjura um elemento DIFERENTE do
+# último, ganha uma carga (até o máximo); repetir o mesmo elemento zera tudo.
+RESSONANCIA_ARCANA_MAXIMA = 5
+RESSONANCIA_ARCANA_BONUS_POR_STACK = 6   # % de dano por carga
+
+# Atordoamento: bater na fraqueza elemental de um monstro enche uma barra;
+# ao encher, ele fica atordoado (perde a próxima ação) — dá uma recompensa
+# tática extra pra explorar fraquezas, além do multiplicador de dano.
+ATORDOAMENTO_LIMIAR = 100
+ATORDOAMENTO_GANHO_POR_ACERTO_FRACO = 25
+
+# Fase de fúria de chefe (ver MonstroBase.tem_fase_furiosa): ativa uma vez,
+# ao cair pra metade da vida, e aumenta o dano dele pelo resto da luta.
+MULTIPLICADOR_FASE_FURIOSA_ATAQUE = 1.3
+
+# Canalização: mini-jogo de memória opcional em habilidades "canalizáveis" —
+# quanto mais símbolos acertar, maior o bônus de dano só no próximo golpe.
+BONUS_CANALIZACAO_MAXIMO_PERCENTUAL = 60
+SIMBOLOS_MINIGAME_CANALIZACAO = 4
+
+# Grupos de monstros na exploração: só monstros comuns, nunca chefes.
+CHANCE_GRUPO_MONSTROS = 4          # 1 em N encontros comuns vira grupo
+TAMANHO_GRUPO_MONSTROS_MIN = 2
+TAMANHO_GRUPO_MONSTROS_MAX = 3

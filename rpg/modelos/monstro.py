@@ -33,6 +33,10 @@ class MonstroBase:
   foge_com_pouca_vida: bool = False
   tem_investida_especial: bool = False
 
+  # Fase de fúria: ao cair pra metade da vida, fica mais forte pro resto da
+  # luta — dá mais dinâmica a chefes sem precisar escrever um script por chefe.
+  tem_fase_furiosa: bool = False
+
 
 @dataclass
 class MonstroBatalha:
@@ -44,6 +48,13 @@ class MonstroBatalha:
   elite: bool = False
   carregando_investida: bool = False
   tentou_fugir: bool = False
+  fugiu: bool = False
+  stagger: int = 0
+  fase_furiosa_ativa: bool = False
+
+  @property
+  def vida_maxima_real(self) -> int:
+    return round(self.base.vida_maxima * (MULTIPLICADOR_ELITE_VIDA if self.elite else 1.0))
 
   @classmethod
   def instanciar(cls, base: MonstroBase, elite: bool = False) -> 'MonstroBatalha':

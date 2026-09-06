@@ -136,6 +136,7 @@ MONSTROS = {
   'Dragão Ancião de Habusken': MonstroBase(
       nome='Dragão Ancião de Habusken', vida_maxima=800, ataque_min=100, ataque_max=130, nivel=35,
       elemento='Fogo', fraquezas=('Gelo',), resistencias=('Fogo', 'Fisico'), chefe=True,
+      tem_fase_furiosa=True,
       exp_min=250, exp_max=340, moedas_min=220, moedas_max=320,
       drops_item=(('Núcleo do Dragão Ancião', 1.0), ('Escama de Salamandra', 0.8)),
       efeito_aplicado='Queimadura', turnos_efeito_aplicado=3,
@@ -221,6 +222,7 @@ MONSTROS = {
   'O Arquiteto': MonstroBase(
       nome='O Arquiteto', vida_maxima=1200, ataque_min=150, ataque_max=190, nivel=50,
       elemento='Sombrio', fraquezas=('Fogo', 'Eletrico'), resistencias=('Sombrio', 'Fisico'), chefe=True,
+      tem_fase_furiosa=True,
       exp_min=600, exp_max=800, moedas_min=500, moedas_max=700,
       drops_item=(('Fragmento do Arquiteto', 1.0),),
       descricoes_ataque=('O Arquiteto revela as engrenagens ocultas por trás da existência das dungeons',
@@ -310,6 +312,7 @@ MONSTROS = {
   'Kraken Ancestral': MonstroBase(
       nome='Kraken Ancestral', vida_maxima=2200, ataque_min=260, ataque_max=320, nivel=75,
       elemento='Agua', fraquezas=('Eletrico',), resistencias=('Fogo', 'Fisico', 'Sombrio'), chefe=True,
+      tem_fase_furiosa=True,
       efeito_aplicado='Paralisia', turnos_efeito_aplicado=2,
       exp_min=1200, exp_max=1500, moedas_min=1000, moedas_max=1400,
       drops_item=(('Tinta de Kraken', 1.0), ('Escama Abissal', 0.8)),
@@ -356,7 +359,7 @@ MONSTROS = {
   'Vashtar, o Rei Cinza': MonstroBase(
       nome='Vashtar, o Rei Cinza', vida_maxima=3000, ataque_min=280, ataque_max=350, nivel=50,
       elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio', 'Fisico'), chefe=True,
-      tem_investida_especial=True,
+      tem_investida_especial=True, tem_fase_furiosa=True,
       efeito_aplicado='Vulnerabilidade', turnos_efeito_aplicado=3,
       exp_min=2000, exp_max=2500, moedas_min=1800, moedas_max=2200,
       drops_item=(('Cinza do Rei Corrompido', 1.0), ('Ectoplasma', 0.6)),

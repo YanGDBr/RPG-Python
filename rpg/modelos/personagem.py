@@ -58,6 +58,9 @@ class Personagem:
   habilidades_aprendidas: List[str] = field(default_factory=list)
   habilidades_equipadas: List[str] = field(default_factory=list)
   cooldowns: Dict[str, int] = field(default_factory=dict)
+  # Começa com 3 slots (as iniciais da classe); até 2 compráveis a mais (5 no
+  # total) — ver CUSTOS_SLOT_HABILIDADE em config.py.
+  slots_habilidade_comprados: int = 0
 
   efeitos_ativos: List[dict] = field(default_factory=list)
   itens_ativados: List[dict] = field(default_factory=list)
@@ -100,6 +103,21 @@ class Personagem:
   # Postura de combate: 'ofensiva' (mais dano, mais dano recebido) ou 'defensiva'.
   postura: str = 'ofensiva'
 
+  # Foco do Arqueiro (recurso próprio) + elemento da flecha (troca de graça
+  # em batalha, só vale pras habilidades de elemento Fisico "genérico").
+  foco_arqueiro: int = 0
+  elemento_flecha_atual: str = 'Fisico'
+
+  # Ressonância Arcana do Mago: sobe ao conjurar um elemento diferente do
+  # último, zera se repetir — recompensa variar em vez de martelar o mesmo.
+  ressonancia_arcana: int = 0
+  ultimo_elemento_conjurado: str = ''
+
+  # Só 1 item por turno em batalha (não gasta turno, mas não empilha vários).
+  item_usado_neste_turno: bool = False
+  # Bônus de um único golpe canalizado (mini-jogo) — some sozinho depois de usado.
+  bonus_canalizacao_pendente: int = 0
+
   # Reputação da guilda (sobe ao completar missão) e progresso pra encantamento.
   reputacao_guilda: int = 0
   encantamento_arma: int = 0
@@ -117,11 +135,6 @@ class Personagem:
 
   def mana_percentual(self) -> float:
     return 0.0 if self.mana_maxima <= 0 else self.mana / self.mana_maxima
-
-  def curar_totalmente(self):
-    self.vida = self.vida_maxima
-    self.mana = self.mana_maxima
-    self.efeitos_ativos.clear()
 
   def adicionar_item(self, nome: str, quantidade: int = 1):
     self.inventario[nome] = self.inventario.get(nome, 0) + quantidade

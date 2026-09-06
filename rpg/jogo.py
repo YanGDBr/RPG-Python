@@ -265,10 +265,10 @@ def _tela_inventario(personagem):
 
 
 def _tela_loja(personagem):
-  ecrans = [loja.loja_itens, loja.loja_pocoes, loja.loja_equipamentos, loja.loja_armaduras,
-            loja.loja_ofertas_do_dia]
+  ecrans = [loja.loja_acessorios, loja.loja_itens_consumiveis, loja.loja_comidas, loja.loja_pocoes,
+            loja.loja_equipamentos, loja.loja_armaduras, loja.loja_ofertas_do_dia]
   while True:
-    opcoes = ['Itens/Acessórios/Comida', 'Poções', 'Equipamentos', 'Armaduras',
+    opcoes = ['Acessórios', 'Itens', 'Comida', 'Poções', 'Equipamentos', 'Armaduras',
               f'{Cor.AMARELO}Ofertas do Dia{Cor.RESET}']
     escolha = menu_padrao(f'{equipamento.resumo_status(personagem)}\n\nLoja', opcoes)
     if escolha is None:
@@ -368,7 +368,7 @@ def _tela_vila(personagem, slots):
       opcoes.append('Abismo Submerso')
     opcoes.append('Mapa do Mundo')
     opcoes += ['Personagem', 'Casa', 'Desbloquear Habilidades', 'Status', 'Guia Elemental',
-               'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho', 'Ferreiro']
+               'Tutorial', 'Guilda', 'Curandeira', 'Saldo', 'Bancada de Trabalho', 'Ferreiro']
     if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
       opcoes.append('Especialização')
     opcoes += ['Estatísticas', 'Mapa de Progresso', 'Salvar Dados', 'Salvar e Sair']
@@ -417,6 +417,8 @@ def _tela_vila(personagem, slots):
       cidade.tela_status(personagem)
     elif acao == 'Guia Elemental':
       cidade.tela_guia_elemental(personagem)
+    elif acao == 'Tutorial':
+      cidade.tela_tutorial(personagem)
     elif acao == 'Guilda':
       cidade.tela_guilda(personagem)
     elif acao == 'Curandeira':

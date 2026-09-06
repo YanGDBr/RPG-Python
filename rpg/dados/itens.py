@@ -53,6 +53,29 @@ ACESSORIOS = {
       'Anel de Fogo', 'O inimigo começa a batalha em Queimadura por 3 turnos', 'queimadura_inicial', 3, preco=130),
   'Bracelete da Sorte': Acessorio(
       'Bracelete da Sorte', 'Aumenta a chance de crítico em 10%', 'critico', 10, preco=150),
+  'Escudo Reforçado': Acessorio(
+      'Escudo Reforçado', 'Reduz o dano recebido em 8%', 'reducao_dano', 8, preco=120),
+  'Bota Ágil': Acessorio(
+      'Bota Ágil', 'Aumenta a esquiva em 6 pontos', 'esquiva_flat', 6, preco=100),
+  'Colar da Fortuna': Acessorio(
+      'Colar da Fortuna', 'Aumenta as moedas ganhas em 10%', 'ouro_extra', 10, preco=150),
+  'Amuleto do Sábio': Acessorio(
+      'Amuleto do Sábio', 'Aumenta a experiência ganha em 8%', 'exp_extra', 8, preco=140),
+  'Anel Regenerativo': Acessorio(
+      'Anel Regenerativo', 'Regenera 2% da vida máxima por turno em batalha', 'regeneracao', 2, preco=110),
+  'Anel de Resistência': Acessorio(
+      'Anel de Resistência', 'Reduz em 20 pontos a chance de sofrer um efeito de status',
+      'resistencia_efeito', 20, preco=110),
+  'Talismã Vampírico': Acessorio(
+      'Talismã Vampírico', 'Recupera 8% da vida máxima sempre que você derrota um inimigo',
+      'vida_ao_matar', 8, preco=140),
+  'Espinho de Ferro': Acessorio(
+      'Espinho de Ferro', '25% de chance de contra-atacar ao esquivar de um golpe',
+      'contra_ataque', 25, preco=100),
+  'Bracelete do Guerreiro': Acessorio(
+      'Bracelete do Guerreiro', 'Ganha 5 de Fúria/Foco extra a cada ataque', 'furia_extra', 5, preco=130),
+  'Cantil Encantado': Acessorio(
+      'Cantil Encantado', 'A fome demora mais pra cair', 'fome_lenta', 2, preco=90),
 }
 
 # Acessórios únicos — só obtidos derrotando o chefe correspondente, não são
@@ -87,10 +110,21 @@ ACESSORIOS_UNICOS = {
       'Coroa do Rei Cinza', 'Reduz o dano recebido em 20%', 'reducao_dano', 20),
 }
 
+# ACESSORIOS_UNICOS é indexado pelo nome do CHEFE (pra progressao.py saber o
+# que cada um derruba) — mas o personagem guarda e equipa pelo nome do ITEM
+# (ex.: 'Cajado do Xamã', não 'Goblin Xamã'). Bug real que isso corrigiu:
+# equipar um acessório único "funcionava" (ficava na lista), mas nada em
+# lugar nenhum sabia resolvê-lo de volta pra um objeto — não aparecia como
+# equipado e nenhum bônus dele era aplicado. Esse índice resolve pelo nome
+# de verdade do item.
+ACESSORIOS_UNICOS_POR_NOME = {acessorio.nome: acessorio for acessorio in ACESSORIOS_UNICOS.values()}
+
 # -------------------------------------------------------------------- Poções
 POCOES = {
   'Vida': Pocao('Vida', 'vida', 60, preco=30),
   'Mana': Pocao('Mana', 'mana', 60, preco=30),
+  'Vida Maior': Pocao('Vida Maior', 'vida', 150, preco=70),
+  'Mana Maior': Pocao('Mana Maior', 'mana', 150, preco=70),
   'Esquiva': Pocao('Esquiva', 'esquiva', 15, preco=80),
   'Poder': Pocao('Poder', 'poder', 10, preco=50),
 }
@@ -108,6 +142,15 @@ ITENS_CONSUMIVEIS = {
       'Perfume Monstro', 'monstro', 2, 'Aumenta a chance de ser atacado por um monstro', preco=50),
   'Drop Buffer': ItemConsumivel(
       'Drop Buffer', 'drop', 20, 'Aumenta os drops e a chance de dropar itens', preco=150),
+  'Isca Fraca': ItemConsumivel(
+      'Isca Fraca', 'monstro', 1, 'Aumenta levemente a chance de ser atacado por um monstro', preco=25),
+  'Capa da Sombra': ItemConsumivel(
+      'Capa da Sombra', 'anti_monstro', 6, 'Diminui bastante a chance de ser atacado por um monstro', preco=70),
+  'Amuleto da Sorte Rápida': ItemConsumivel(
+      'Amuleto da Sorte Rápida', 'drop', 35, 'Aumenta bastante os drops e a chance de dropar itens', preco=200),
+  'Mapa do Tesouro': ItemConsumivel(
+      'Mapa do Tesouro', 'boss_mapa', 3, 'Reduz drasticamente as ações necessárias para achar a sala do chefe',
+      preco=180),
 }
 
 # --------------------------------------------------------------- Comidas

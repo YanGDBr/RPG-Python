@@ -9,9 +9,11 @@ que existia antes, onde todo andar era visualmente idêntico.
 """
 
 import random
+from collections import Counter
 
-from ..config import (CHANCE_MONSTRO_ELITE, NIVEL_PERIGO_AMARELO, NIVEL_PERIGO_VERDE,
-                       NIVEL_PERIGO_VERMELHO, Cor)
+from ..config import (CHANCE_GRUPO_MONSTROS, CHANCE_MONSTRO_ELITE, NIVEL_PERIGO_AMARELO,
+                       NIVEL_PERIGO_VERDE, NIVEL_PERIGO_VERMELHO, TAMANHO_GRUPO_MONSTROS_MAX,
+                       TAMANHO_GRUPO_MONSTROS_MIN, Cor)
 from ..dados.dungeons import DUNGEONS
 from ..dados.mapas import MAPAS
 from ..dados.monstros import MONSTROS
@@ -152,6 +154,11 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
     chance_boss = min(chance_boss, bonus_acessorio)
     escrever(f'{Cor.CIANO}Seu acessório aumenta a chance de achar a sala do chefe!{Cor.RESET}')
 
+  bonus_mapa = consumir_efeito_ativado(personagem, 'boss_mapa')
+  if bonus_mapa:
+    chance_boss = min(chance_boss, bonus_mapa)
+    escrever(f'{Cor.CIANO}O Mapa do Tesouro aumenta a chance de achar a sala do chefe!{Cor.RESET}')
+
   if random.randint(1, chance_boss) == 1:
     pergunta = (f'{Cor.AMARELO}Você encontrou a sala do chefe: {andar.chefe}!{Cor.RESET}\n'
                 f'Deseja entrar para batalhar?')
@@ -183,18 +190,40 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
     monstros_com_missao = {m['monstro'] for m in personagem.missoes_ativas} & set(andar.monstros_comuns)
     for nome_monstro_missao in monstros_com_missao:
       pool += [nome_monstro_missao] * len(andar.monstros_comuns)
-    nome_monstro = random.choice(pool)
-    chance_elite = CHANCE_MONSTRO_ELITE
-    if nivel_perigo == NIVEL_PERIGO_VERMELHO:
-      # área vermelha: monstros "buffados" — a mesma variante elite, só que
-      # bem mais frequente.
-      chance_elite = max(2, CHANCE_MONSTRO_ELITE // 5)
-    elite = random.randint(1, chance_elite) == 1
-    prefixo_elite = f'{Cor.AMARELO}[ELITE] {Cor.RESET}' if elite else ''
-    pergunta = (f'{Cor.AMARELO}Você encontrou um {prefixo_elite}{nome_monstro}!{Cor.RESET}\n'
-                f'Deseja lutar contra ele?')
+
+    # Grupos (2-3 monstros comuns, nunca chefe) ficam mais prováveis quanto
+    # mais perigosa a área — e nunca viram elite (já são mais perigosos por
+    # serem vários de uma vez).
+    chance_grupo = CHANCE_GRUPO_MONSTROS
+    if nivel_perigo == NIVEL_PERIGO_VERDE:
+      chance_grupo += 2
+    elif nivel_perigo == NIVEL_PERIGO_VERMELHO:
+      chance_grupo = max(2, CHANCE_GRUPO_MONSTROS - 2)
+    eh_grupo = random.randint(1, chance_grupo) == 1
+
+    if eh_grupo:
+      tamanho = random.randint(TAMANHO_GRUPO_MONSTROS_MIN, TAMANHO_GRUPO_MONSTROS_MAX)
+      nomes_monstros = [random.choice(pool) for _ in range(tamanho)]
+      elite = False
+      contagem = Counter(nomes_monstros)
+      descricao_grupo = ', '.join(f'{qtd}x {nome}' for nome, qtd in contagem.items())
+      pergunta = (f'{Cor.AMARELO}Você encontrou um grupo: {descricao_grupo}!{Cor.RESET}\n'
+                  f'Deseja lutar contra eles?')
+    else:
+      nomes_monstros = [random.choice(pool)]
+      chance_elite = CHANCE_MONSTRO_ELITE
+      if nivel_perigo == NIVEL_PERIGO_VERMELHO:
+        # área vermelha: monstros "buffados" — a mesma variante elite, só que
+        # bem mais frequente.
+        chance_elite = max(2, CHANCE_MONSTRO_ELITE // 5)
+      elite = random.randint(1, chance_elite) == 1
+      prefixo_elite = f'{Cor.AMARELO}[ELITE] {Cor.RESET}' if elite else ''
+      pergunta = (f'{Cor.AMARELO}Você encontrou um {prefixo_elite}{nomes_monstros[0]}!{Cor.RESET}\n'
+                  f'Deseja lutar contra ele?')
+
     if ler_confirmacao(pergunta):
-      _lutar(personagem, dungeon_id, nome_monstro, escrever, ler_acao_batalha, aguardar, elite=elite)
+      alvo = nomes_monstros if eh_grupo else nomes_monstros[0]
+      _lutar(personagem, dungeon_id, alvo, escrever, ler_acao_batalha, aguardar, elite=elite)
     return
 
   limite_moeda = 3 if nivel_perigo == NIVEL_PERIGO_VERDE else 2
@@ -206,14 +235,22 @@ def _resolver_evento(personagem, dungeon_id, andar, escrever, ler_confirmacao,
     escrever(f'{Cor.CINZA}Você explorou a dungeon e não encontrou nada.{Cor.RESET}')
 
 
-def _lutar(personagem, dungeon_id, nome_monstro, escrever, ler_acao_batalha, aguardar, elite=False):
-  resultado, monstro = batalhar(personagem, MONSTROS[nome_monstro], escrever=escrever,
-                                 ler_acao=ler_acao_batalha, aguardar=aguardar, elite=elite)
+def _lutar(personagem, dungeon_id, nomes_monstros, escrever, ler_acao_batalha, aguardar, elite=False):
+  """`nomes_monstros` é um nome só (chefe, sempre solo) ou uma lista (grupo
+  comum) — o formato de saída de `batalhar` acompanha o de entrada."""
+  eh_grupo = isinstance(nomes_monstros, list)
+  bases = [MONSTROS[nome] for nome in nomes_monstros] if eh_grupo else MONSTROS[nomes_monstros]
+  resultado, monstros = batalhar(personagem, bases, escrever=escrever,
+                                  ler_acao=ler_acao_batalha, aguardar=aguardar, elite=elite)
   personagem.local = f'dungeon:{dungeon_id}'
+  lista = monstros if eh_grupo else [monstros]
+
   if resultado == ResultadoBatalha.VITORIA:
-    escrever(f'{Cor.VERDE}Você derrotou {monstro.nome}!{Cor.RESET}')
-    conceder_recompensas(personagem, monstro.base, escrever, elite=monstro.elite)
+    for m in lista:
+      if not m.vivo:  # só recompensa quem morreu de verdade — quem fugiu, não
+        escrever(f'{Cor.VERDE}Você derrotou {m.nome}!{Cor.RESET}')
+        conceder_recompensas(personagem, m.base, escrever, elite=m.elite)
   elif resultado == ResultadoBatalha.DERROTA:
     verificar_morte(personagem, escrever)
   elif resultado == ResultadoBatalha.MONSTRO_FUGIU:
-    escrever(f'{Cor.CIANO}{monstro.nome} fugiu — nenhuma recompensa dessa vez.{Cor.RESET}')
+    escrever(f'{Cor.CIANO}{lista[0].nome} fugiu — nenhuma recompensa dessa vez.{Cor.RESET}')
