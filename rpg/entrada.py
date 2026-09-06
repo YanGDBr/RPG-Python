@@ -70,18 +70,27 @@ def ler_tecla():
 
 
 def menu(titulo, opcoes, *, indice_inicial=0, com_voltar=True,
-         leitor=None, escrever=None, limpar=None):
+         leitor=None, escrever=None, limpar=None, secoes=None):
   """Menu navegável por setas/WASD. Devolve o índice escolhido, ou None
   se o jogador cancelou (Esc) — só possível quando `com_voltar=True`.
 
   `leitor`, `escrever` e `limpar` são injetáveis para permitir testar o
   menu inteiro sem um terminal interativo de verdade.
+
+  `secoes` (opcional): dict {índice em `opcoes`: texto do cabeçalho},
+  mostrado ANTES daquela opção — só para organizar visualmente uma lista
+  longa em grupos, sem precisar de telas separadas pra cada grupo (isso já
+  foi tentado e o jogador achou pior: obrigava entrar e lembrar em qual
+  submenu cada coisa estava). Cabeçalhos são só desenho — não contam como
+  opção navegável nem mudam nenhum índice retornado.
   """
+  from .config import Cor
   from .interface import limpar_tela
 
   leitor = leitor or ler_tecla
   escrever = escrever or print
   limpar = limpar or limpar_tela
+  secoes = secoes or {}
 
   destaque = '\033[7;1m'
   reset = '\033[0m'
@@ -92,6 +101,8 @@ def menu(titulo, opcoes, *, indice_inicial=0, com_voltar=True,
     if titulo:
       escrever(titulo)
     for i, rotulo in enumerate(opcoes):
+      if i in secoes:
+        escrever(f'\n {Cor.CIANO}{secoes[i]}{Cor.RESET}')
       if i == indice:
         # Reaplica o destaque depois de cada reset de cor embutido no rótulo,
         # senão a primeira cor dentro da opção quebraria o realce ao selecionar.

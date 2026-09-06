@@ -382,38 +382,35 @@ def _tela_mapa_mundo(personagem, slots):
         input('\nAperte Enter para continuar...')
 
 
-_CATEGORIAS_VILA = ['Explorar', 'Cidade', 'Personagem', 'Registros', 'Sistema']
-
-_OPCOES_CIDADE = ['Loja', 'Curandeira', 'Ferreiro', 'Bancada de Trabalho', 'Saldo',
-                  'Mestre de Habusken', 'Conversar com o Ancião', 'Casa']
-_OPCOES_REGISTROS = ['Tutorial', 'Estatísticas', 'Mapa de Progresso', 'Diário de Conquistas']
-_OPCOES_SISTEMA = ['Salvar Dados', 'Salvar e Sair']
-
-
-def _opcoes_explorar(personagem):
+def _opcoes_e_secoes_vila(personagem):
+  """Uma lista só (sem sub-telas — foi tentado categorizar em sub-menus e o
+  jogador achou pior: tinha que entrar e lembrar em qual grupo cada coisa
+  estava). `secoes` só organiza visualmente com cabeçalhos coloridos, sem
+  adicionar nenhum nível de navegação — sobe/desce passa por cima deles."""
   opcoes = ['Dungeon de Habusken']
   if personagem.torre_arcana_liberada:
     opcoes.append('Torre Arcana')
   if personagem.abismo_submerso_liberado:
     opcoes.append('Abismo Submerso')
   opcoes += ['Mapa do Mundo', 'Guilda']
-  return opcoes
+  secoes = {0: 'AVENTURA'}
 
+  secoes[len(opcoes)] = 'CIDADE'
+  opcoes += ['Loja', 'Curandeira', 'Ferreiro', 'Bancada de Trabalho', 'Saldo',
+             'Mestre de Habusken', 'Conversar com o Ancião', 'Casa']
 
-def _opcoes_personagem_vila(personagem):
-  opcoes = ['Personagem', 'Status', 'Desbloquear Habilidades']
+  secoes[len(opcoes)] = 'PERSONAGEM'
+  opcoes += ['Personagem', 'Status', 'Desbloquear Habilidades']
   if personagem.nivel >= NIVEL_MINIMO_ESPECIALIZACAO:
     opcoes.append('Especialização')
-  return opcoes
 
+  secoes[len(opcoes)] = 'REGISTROS'
+  opcoes += ['Tutorial', 'Estatísticas', 'Mapa de Progresso', 'Diário de Conquistas']
 
-_OPCOES_POR_CATEGORIA = {
-  'Explorar': ('explorar', _opcoes_explorar),
-  'Cidade': ('cidade', lambda _p: list(_OPCOES_CIDADE)),
-  'Personagem': ('personagem', _opcoes_personagem_vila),
-  'Registros': ('registros', lambda _p: list(_OPCOES_REGISTROS)),
-  'Sistema': ('sistema', lambda _p: list(_OPCOES_SISTEMA)),
-}
+  secoes[len(opcoes)] = 'SISTEMA'
+  opcoes += ['Salvar Dados', 'Salvar e Sair']
+
+  return opcoes, secoes
 
 
 def _titulo_vila(personagem):
@@ -489,32 +486,18 @@ def _executar_acao_vila(acao, personagem, slots):
     sys.exit()
 
 
-def _submenu_vila(personagem, slots, categoria, indices):
-  chave, obter_opcoes = _OPCOES_POR_CATEGORIA[categoria]
-  while True:
-    _talvez_autosalvar(personagem, slots)
-    if personagem.morto:
-      _processar_morte_se_necessario(personagem)
-
-    opcoes = obter_opcoes(personagem)
-    escolha = menu_padrao(_titulo_vila(personagem), opcoes, indice_inicial=indices[chave])
-    if escolha is None:
-      return
-    indices[chave] = escolha
-    _executar_acao_vila(opcoes[escolha], personagem, slots)
-
-
 def _tela_vila(personagem, slots):
-  indices = {'vila': 0, 'explorar': 0, 'cidade': 0, 'personagem': 0, 'registros': 0, 'sistema': 0}
+  indice = 0
   while True:
     _talvez_autosalvar(personagem, slots)
     if personagem.morto:
       _processar_morte_se_necessario(personagem)
 
-    escolha = menu_padrao(_titulo_vila(personagem), _CATEGORIAS_VILA, com_voltar=False,
-                           indice_inicial=indices['vila'])
-    indices['vila'] = escolha
-    _submenu_vila(personagem, slots, _CATEGORIAS_VILA[escolha], indices)
+    opcoes, secoes = _opcoes_e_secoes_vila(personagem)
+    escolha = menu_padrao(_titulo_vila(personagem), opcoes, com_voltar=False,
+                           indice_inicial=indice, secoes=secoes)
+    indice = escolha
+    _executar_acao_vila(opcoes[escolha], personagem, slots)
 
 
 def iniciar():

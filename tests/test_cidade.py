@@ -23,6 +23,40 @@ def test_tela_personagem_mostra_itens_especiais_quando_tem():
   assert any('Selo de Habusken' in t for t in titulos)
 
 
+def test_tela_personagem_mostra_quadro_ascii_de_equipamento():
+  """Pedido do usuário: algo mais gráfico, no molde do quadro de Status,
+  em vez do bloco de texto corrido que tinha antes."""
+  personagem = _personagem()
+  titulos = []
+
+  cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,
+                          ler_acao=lambda titulo, *_a, **_k: titulos.append(titulo) or None,
+                          aguardar=lambda: None)
+
+  texto = titulos[0]
+  assert 'EQUIPAMENTO DE TESTE' in texto.upper()
+  assert '+---' in texto or '+-' in texto  # borda do quadro
+
+
+def test_tela_personagem_agrupa_acoes_por_secao():
+  """A lista de ações não deve mais ser um monte de itens soltos: cada
+  categoria (arma/armadura/acessório) tem seu próprio cabeçalho visual."""
+  personagem = _personagem()
+  personagem.equipamentos_guardados = ['Espada de Ferro']
+  personagem.armaduras_guardadas = ['Armadura de Couro']
+  personagem.acessorios_guardados = ['Bracelete da Sorte']
+  personagem.acessorios_equipados = ['Anel de Fogo']
+  secoes_vistas = []
+
+  cidade.tela_personagem(
+      personagem, escrever=lambda *_a, **_k: None,
+      ler_acao=lambda _t, _o, **kw: secoes_vistas.append(kw.get('secoes')) or None,
+      aguardar=lambda: None)
+
+  secoes = secoes_vistas[0]
+  assert {'ARMAS', 'ARMADURAS', 'ACESSÓRIOS — equipar', 'ACESSÓRIOS — desequipar'} <= set(secoes.values())
+
+
 def test_mestre_habusken_pausa_ao_rejeitar_jogador_sem_boss_derrotado():
   personagem = _personagem()  # ainda não derrotou o Slime Gigante
   chamadas_aguardar = []
@@ -411,7 +445,7 @@ def test_personagem_pede_escolha_de_slot_quando_todos_ocupados():
   personagem = _personagem()
   personagem.acessorios_equipados = ['Anel de Fogo']  # ocupa o único slot base
   personagem.acessorios_guardados = ['Bracelete da Sorte']
-  # 1ª escolha: "Equipar acessório: Bracelete da Sorte" (índice 0)
+  # 1ª escolha: "Equipar: Bracelete da Sorte" (índice 0)
   # 2ª escolha (sub-menu de qual remover): "Anel de Fogo" (índice 0)
   # depois sai
   ler_acao = _fake_menu_sequencia([0, 0, None])
@@ -427,7 +461,7 @@ def test_personagem_desequipa_acessorio():
   personagem = _personagem()
   personagem.acessorios_equipados = ['Anel de Fogo']
   # única opção disponível (nada guardado, 1 slot comprável) é:
-  # 0 = Desequipar acessório: Anel de Fogo, 1 = Comprar slot
+  # 0 = Desequipar: Anel de Fogo, 1 = Comprar slot
   ler_acao = _fake_menu_sequencia([0, None])
 
   cidade.tela_personagem(personagem, escrever=lambda *_a, **_k: None,

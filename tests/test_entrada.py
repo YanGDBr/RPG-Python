@@ -32,3 +32,26 @@ def test_menu_de_verdade_aceita_espaco_pra_escolher_opcao(monkeypatch):
                           escrever=lambda *_a, **_k: None, limpar=lambda: None)
 
   assert escolha == 1
+
+
+def test_menu_com_secoes_mostra_cabecalho_sem_afetar_navegacao():
+  """Cabeçalhos de seção são só desenho — não entram em `opcoes`, então não
+  mudam índice nenhum nem viram opção selecionável."""
+  linhas = []
+
+  escolha = entrada.menu(
+      'Teste', ['A', 'B', 'C'], secoes={0: 'GRUPO 1', 2: 'GRUPO 2'},
+      leitor=lambda: entrada.ENTER, escrever=linhas.append, limpar=lambda: None)
+
+  assert escolha == 0  # Enter na primeira chamada, índice inicial 0 — igual sem `secoes`
+  texto = '\n'.join(linhas)
+  assert 'GRUPO 1' in texto
+  assert 'GRUPO 2' in texto
+  # o cabeçalho do grupo 2 tem que aparecer DEPOIS da opção A e ANTES da C.
+  assert texto.index('A') < texto.index('GRUPO 2') < texto.index('C')
+
+
+def test_menu_sem_secoes_continua_funcionando_como_antes():
+  escolha = entrada.menu('Teste', ['A', 'B'], leitor=lambda: entrada.ENTER,
+                          escrever=lambda *_a, **_k: None, limpar=lambda: None)
+  assert escolha == 0

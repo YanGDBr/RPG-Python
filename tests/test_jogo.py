@@ -1,3 +1,5 @@
+import pytest
+
 from rpg import jogo
 from rpg.dados.classes import CLASSES
 from rpg.modelos.personagem import Personagem
@@ -309,15 +311,16 @@ def test_derrotar_vashtar_mostra_epilogo_uma_unica_vez(monkeypatch):
 
 def test_vila_nao_tem_mais_guia_elemental_como_opcao_propria():
   """O Guia Elemental virou um tópico dentro do Tutorial — não deveria mais
-  aparecer solto em nenhuma categoria da vila."""
+  aparecer solto na vila."""
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
-  for _chave, obter_opcoes in jogo._OPCOES_POR_CATEGORIA.values():
-    assert 'Guia Elemental' not in obter_opcoes(personagem)
+  opcoes, _secoes = jogo._opcoes_e_secoes_vila(personagem)
+  assert 'Guia Elemental' not in opcoes
 
 
-def test_todas_as_opcoes_de_categoria_sao_reconhecidas_por_executar_acao(monkeypatch):
-  """Regressão: uma opção presente numa categoria mas sem `elif` correspondente
-  em `_executar_acao_vila` simplesmente não faria nada ao ser escolhida."""
+def test_todas_as_opcoes_da_vila_sao_reconhecidas_por_executar_acao(monkeypatch):
+  """Regressão: uma opção presente na lista da vila mas sem `elif`
+  correspondente em `_executar_acao_vila` simplesmente não faria nada ao
+  ser escolhida."""
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   personagem.torre_arcana_liberada = True
   personagem.abismo_submerso_liberado = True
@@ -346,9 +349,8 @@ def test_todas_as_opcoes_de_categoria_sao_reconhecidas_por_executar_acao(monkeyp
   monkeypatch.setattr('builtins.input', lambda *_a, **_k: '')
   monkeypatch.setattr('builtins.print', lambda *_a, **_k: None)
 
-  acoes_testaveis = []
-  for _chave, obter_opcoes in jogo._OPCOES_POR_CATEGORIA.values():
-    acoes_testaveis += [a for a in obter_opcoes(personagem) if a != 'Salvar e Sair']
+  opcoes, _secoes = jogo._opcoes_e_secoes_vila(personagem)
+  acoes_testaveis = [a for a in opcoes if a != 'Salvar e Sair']
 
   for acao in acoes_testaveis:
     antes = len(chamadas)
@@ -356,25 +358,34 @@ def test_todas_as_opcoes_de_categoria_sao_reconhecidas_por_executar_acao(monkeyp
     assert len(chamadas) == antes + 1, f'"{acao}" não disparou nenhuma tela'
 
 
-def test_submenu_vila_lembra_a_ultima_opcao_selecionada(monkeypatch):
-  """Pedido do usuário: sair de uma tela (ex.: Personagem) e voltar pro menu
-  anterior deve manter aquele item já selecionado, em vez de resetar pro
-  topo — aqui simulado como duas visitas seguidas à mesma categoria."""
+def test_vila_lembra_a_ultima_opcao_selecionada(monkeypatch):
+  """Pedido do usuário: voltar pro menu da vila depois de sair de uma tela
+  deve manter aquele item já selecionado, em vez de resetar pro topo."""
   personagem = Personagem(nome='teste', classe='Cavaleiro', raca='Humano')
   indices_iniciais_vistos = []
-  respostas = iter([3, None, None])  # 1ª visita: escolhe índice 3, depois sai; 2ª visita: sai direto
+  respostas = iter([3, 3])  # escolhe índice 3 de novo na 2ª volta ao menu
 
-  def _fake_menu(_titulo, _opcoes, *, indice_inicial=0, **_kw):
+  def _fake_menu(_titulo, _opcoes, *, indice_inicial=0, com_voltar=True, secoes=None):
     indices_iniciais_vistos.append(indice_inicial)
     return next(respostas)
 
+  class _Para(Exception):
+    pass
+
+  chamadas = []
+
+  def _fake_executar(acao, _p, _slots):
+    chamadas.append(acao)
+    if len(chamadas) == 2:
+      raise _Para()
+
   monkeypatch.setattr(jogo, 'menu_padrao', _fake_menu)
-  monkeypatch.setattr(jogo.cidade, 'tela_crafting', lambda *_a, **_k: None)
+  monkeypatch.setattr(jogo, '_executar_acao_vila', _fake_executar)
+  monkeypatch.setattr(jogo, '_talvez_autosalvar', lambda *_a, **_k: None)
 
-  indices = {'vila': 0, 'explorar': 0, 'cidade': 0, 'personagem': 0, 'registros': 0, 'sistema': 0}
-  jogo._submenu_vila(personagem, [None, None, None], 'Cidade', indices)  # 1ª visita
-  jogo._submenu_vila(personagem, [None, None, None], 'Cidade', indices)  # 2ª visita
+  with pytest.raises(_Para):
+    jogo._tela_vila(personagem, [None, None, None])
 
-  # 1ª visita: abre em 0, escolhe 3, redesenha já em 3; 2ª visita: já abre
-  # direto no índice 3 lembrado da vez anterior, sem resetar pro topo.
-  assert indices_iniciais_vistos == [0, 3, 3]
+  # 1ª volta ao menu abre em 0 (padrão); a 2ª já abre no índice 3 escolhido
+  # na volta anterior, em vez de resetar pro topo.
+  assert indices_iniciais_vistos == [0, 3]

@@ -330,7 +330,32 @@ def _comprar_slot_acessorio(personagem, escrever, aguardar):
   aguardar()
 
 
+def _quadro_equipamento(personagem, arma, armadura, acessorios, max_slots):
+  """Substitui o antigo bloco de texto solto por um quadro ASCII, no mesmo
+  molde do `STATUS DE ...` — a tela de Personagem tende a acumular muito
+  acessório/arma/armadura guardado ao longo do jogo e virava só um monte de
+  texto corrido."""
+  linhas = [
+    f'Arma:      {Cor.BRANCO}{arma.nome}{Cor.RESET} '
+    f'({arma.bonus_poder_percentual}% poder, {arma.elemento})',
+    f'Armadura:  {Cor.BRANCO}{armadura.nome if armadura else "Nenhuma"}{Cor.RESET}'
+    + (f' ({armadura.descricao})' if armadura else ''),
+    '',
+    f'Acessórios ({len(acessorios)}/{max_slots}):',
+  ]
+  linhas += ([f'  - {a.nome}: {a.descricao}' for a in acessorios] if acessorios
+             else ['  Nenhum equipado'])
+  if personagem.itens_especiais:
+    linhas.append('')
+    linhas.append(f'Itens especiais: {Cor.CIANO}{", ".join(personagem.itens_especiais)}{Cor.RESET}')
+  return _desenhar_quadro(f'EQUIPAMENTO DE {personagem.nome.upper()}', linhas, largura=90)
+
+
 def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
+  """A lista de ações usa `secoes` (cabeçalhos visuais, sem virar sub-tela —
+  ver `_opcoes_e_secoes_vila` em jogo.py pra mais contexto) pra separar
+  arma/armadura/equipar acessório/desequipar acessório, que antes viravam
+  uma lista só cada vez mais longa e difícil de escanear."""
   ler_acao = ler_acao or menu_padrao
   aguardar = aguardar or aguardar_leitura
   indice = 0
@@ -340,31 +365,32 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
     acessorios = equipamento.resolver_acessorios(personagem)
     max_slots = _max_slots_acessorio(personagem)
 
-    linhas_acessorios = ([f'  - {a.nome}: {a.descricao}' for a in acessorios]
-                         if acessorios else ['  Nenhum equipado'])
-    linha_especiais = (f'\nItens especiais: {Cor.CIANO}'
-                        + ', '.join(personagem.itens_especiais) + f'{Cor.RESET}'
-                        if personagem.itens_especiais else '')
-    titulo = (f'{equipamento.resumo_status(personagem)}\n\n'
-              f'Arma: {Cor.BRANCO}{arma.nome}{Cor.RESET} '
-              f'({arma.bonus_poder_percentual}% poder, {arma.elemento})\n'
-              f'Armadura: {Cor.BRANCO}{armadura.nome if armadura else "Nenhuma"}{Cor.RESET}'
-              f'{f" ({armadura.descricao})" if armadura else ""}\n'
-              f'Acessórios ({len(acessorios)}/{max_slots}):\n' + '\n'.join(linhas_acessorios)
-              + linha_especiais)
+    quadro = _quadro_equipamento(personagem, arma, armadura, acessorios, max_slots)
+    titulo = f'{equipamento.resumo_status(personagem)}\n\n{quadro}'
 
     total_armas = len(personagem.equipamentos_guardados)
     total_armaduras = len(personagem.armaduras_guardadas)
     total_guardados_acessorio = len(personagem.acessorios_guardados)
 
-    opcoes = ([f'Equipar arma: {n} ({_descricao_arma(n)})' for n in personagem.equipamentos_guardados] +
-              [f'Equipar armadura: {n} ({_descricao_armadura(n)})' for n in personagem.armaduras_guardadas] +
-              [f'Equipar acessório: {n} ({_descricao_acessorio(n)})'
-               for n in personagem.acessorios_guardados] +
-              [f'Desequipar acessório: {n}' for n in personagem.acessorios_equipados])
+    opcoes = []
+    secoes = {}
+    if personagem.equipamentos_guardados:
+      secoes[len(opcoes)] = 'ARMAS'
+      opcoes += [f'Equipar: {n} ({_descricao_arma(n)})' for n in personagem.equipamentos_guardados]
+    if personagem.armaduras_guardadas:
+      secoes[len(opcoes)] = 'ARMADURAS'
+      opcoes += [f'Equipar: {n} ({_descricao_armadura(n)})' for n in personagem.armaduras_guardadas]
+    if personagem.acessorios_guardados:
+      secoes[len(opcoes)] = 'ACESSÓRIOS — equipar'
+      opcoes += [f'Equipar: {n} ({_descricao_acessorio(n)})' for n in personagem.acessorios_guardados]
+    if personagem.acessorios_equipados:
+      secoes[len(opcoes)] = 'ACESSÓRIOS — desequipar'
+      opcoes += [f'Desequipar: {n}' for n in personagem.acessorios_equipados]
+
     indice_comprar_slot = None
     if personagem.slots_acessorio_comprados < len(CUSTOS_SLOT_ACESSORIO):
       custo, campo_moeda = CUSTOS_SLOT_ACESSORIO[personagem.slots_acessorio_comprados]
+      secoes[len(opcoes)] = 'LOJA'
       indice_comprar_slot = len(opcoes)
       opcoes.append(f'Comprar slot de acessório extra — {custo} {_NOME_MOEDA[campo_moeda]}')
 
@@ -377,7 +403,7 @@ def tela_personagem(personagem, escrever=print, ler_acao=None, aguardar=None):
       ler_acao(titulo_vazio, ['Voltar'], com_voltar=False)
       return
 
-    escolha = ler_acao(titulo, opcoes, indice_inicial=indice)
+    escolha = ler_acao(titulo, opcoes, indice_inicial=indice, secoes=secoes)
     if escolha is None:
       return
     indice = escolha
