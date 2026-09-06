@@ -92,6 +92,39 @@ def test_derrotar_chefe_de_habusken_concede_selo_de_identidade(monkeypatch):
   assert personagem.itens_especiais.get('Selo de Habusken') == 1
 
 
+def test_primeiro_abate_de_chefe_concede_bonus_de_recompensa(monkeypatch):
+  """Pedido explícito do usuário: a primeira vez que se derrota um chefe
+  específico dá uma recompensa turbinada, além do já aumentado normal.
+  Usa `moedas_totais_ganhas` (não `exp`) pra comparar, já que `exp` passa
+  por level-up e o excedente vira resto — moedas é uma soma direta, sem
+  esse efeito colateral."""
+  from rpg.config import BONUS_PRIMEIRO_ABATE_CHEFE_PERCENTUAL
+  personagem = _personagem()
+  personagem.vida = personagem.vida_maxima
+  monstro = MONSTROS['Slime Gigante']
+  monkeypatch.setattr(progressao.random, 'randint', lambda minimo, _maximo: minimo)
+  monkeypatch.setattr(progressao.random, 'random', lambda: 1.0)  # nenhum drop de item aleatório
+
+  progressao.conceder_recompensas(personagem, monstro, lambda *_a, **_k: None)
+
+  moedas_esperadas = trunc(monstro.moedas_min + monstro.moedas_min * BONUS_PRIMEIRO_ABATE_CHEFE_PERCENTUAL / 100)
+  assert personagem.moedas_totais_ganhas == moedas_esperadas
+  assert personagem.moeda_cobre == 1000 + moedas_esperadas
+
+
+def test_segundo_abate_do_mesmo_chefe_nao_repete_o_bonus(monkeypatch):
+  personagem = _personagem()
+  personagem.vida = personagem.vida_maxima
+  monstro = MONSTROS['Slime Gigante']
+  personagem.chefes_derrotados.append(monstro.nome)  # já derrotado antes
+  monkeypatch.setattr(progressao.random, 'randint', lambda minimo, _maximo: minimo)
+  monkeypatch.setattr(progressao.random, 'random', lambda: 1.0)
+
+  progressao.conceder_recompensas(personagem, monstro, lambda *_a, **_k: None)
+
+  assert personagem.moedas_totais_ganhas == monstro.moedas_min  # sem bônus de "primeira vez"
+
+
 def test_derrotar_chefe_sem_documento_nao_ganha_item_especial(monkeypatch):
   personagem = _personagem()
   personagem.vida = personagem.vida_maxima

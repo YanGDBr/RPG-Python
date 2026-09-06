@@ -115,12 +115,16 @@ def test_bonus_percentuais_somam_em_vez_de_multiplicar_em_cadeia():
   assert dano_previsto == round(15 * 1.55)
 
 
-def test_chance_de_critico_tem_teto():
+def test_chance_de_critico_nao_tem_mais_teto():
+  """Pedido explícito do usuário: removeu-se o teto de 60% — empilhar sorte/
+  acessório/habilidade/especialização agora pode passar de 100% (crítico
+  garantido), em vez de estagnar num limite fixo."""
   from rpg.dados.habilidades import HABILIDADES
   personagem = _personagem_cavaleiro()
-  personagem.sorte = 200  # tentativa de estourar o teto
+  personagem.sorte = 200
   chance = batalha.chance_de_critico(personagem, HABILIDADES['Investida'])
-  assert chance == 60
+  assert chance > 60
+  assert chance == batalha.CHANCE_CRITICO_BASE + 200
 
 
 def test_queimadura_aplicada_no_monstro_causa_dano_a_cada_rodada():

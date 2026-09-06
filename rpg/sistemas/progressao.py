@@ -3,7 +3,8 @@
 import random
 from math import trunc
 
-from ..config import (ACOES_POR_DESGASTE_FOME, BONUS_ELITE_RECOMPENSA_PERCENTUAL, FOME_CRITICA,
+from ..config import (ACOES_POR_DESGASTE_FOME, BONUS_ELITE_RECOMPENSA_PERCENTUAL,
+                       BONUS_PRIMEIRO_ABATE_CHEFE_PERCENTUAL, FOME_CRITICA,
                        FOME_MAXIMA, MULTIPLICADOR_EXP_GLOBAL, REPUTACAO_GANHA_POR_MISSAO, Cor)
 from ..dados.itens import ACESSORIOS_UNICOS, MATERIAIS
 from ..dados.racas import RACAS
@@ -74,6 +75,10 @@ def aplicar_desgaste_fome(personagem, escrever, limite_acoes=None):
 
 
 def conceder_recompensas(personagem, monstro_base, escrever, elite=False):
+  # Calculado ANTES de mexer em `chefes_derrotados` — depois disso a mesma
+  # checagem já não seria mais verdadeira.
+  primeiro_abate_de_chefe = monstro_base.chefe and monstro_base.nome not in personagem.chefes_derrotados
+
   exp = trunc(random.randint(monstro_base.exp_min, monstro_base.exp_max) * MULTIPLICADOR_EXP_GLOBAL)
   moedas = random.randint(monstro_base.moedas_min, monstro_base.moedas_max)
 
@@ -81,6 +86,12 @@ def conceder_recompensas(personagem, monstro_base, escrever, elite=False):
     exp = trunc(exp + exp * BONUS_ELITE_RECOMPENSA_PERCENTUAL / 100)
     moedas = trunc(moedas + moedas * BONUS_ELITE_RECOMPENSA_PERCENTUAL / 100)
     escrever(f'{Cor.AMARELO}Monstro elite! Recompensas em dobro.{Cor.RESET}')
+
+  if primeiro_abate_de_chefe:
+    exp = trunc(exp + exp * BONUS_PRIMEIRO_ABATE_CHEFE_PERCENTUAL / 100)
+    moedas = trunc(moedas + moedas * BONUS_PRIMEIRO_ABATE_CHEFE_PERCENTUAL / 100)
+    escrever(f'{Cor.AMARELO}Primeira vez derrotando {monstro_base.nome}! '
+             f'Recompensas muito maiores por isso.{Cor.RESET}')
 
   bonus_drop = consumir_efeito_ativado(personagem, 'drop')
   if bonus_drop:
@@ -121,7 +132,7 @@ def conceder_recompensas(personagem, monstro_base, escrever, elite=False):
         personagem.adicionar_item(nome_item)
       escrever(f'{Cor.VERDE}O {monstro_base.nome} deixou cair: {nome_item}!{Cor.RESET}')
 
-  if monstro_base.chefe and monstro_base.nome not in personagem.chefes_derrotados:
+  if primeiro_abate_de_chefe:
     personagem.chefes_derrotados.append(monstro_base.nome)
     acessorio_unico = ACESSORIOS_UNICOS.get(monstro_base.nome)
     if acessorio_unico:

@@ -8,7 +8,7 @@ from ..config import (ATORDOAMENTO_GANHO_POR_ACERTO_FRACO, ATORDOAMENTO_LIMIAR, 
                        BONUS_DISCIPLINA_PODER, BONUS_DISCIPLINA_SORTE,
                        BONUS_ETEN_PERCENTUAL, BONUS_POSTURA_DEFENSIVA_DANO, BONUS_POSTURA_DEFENSIVA_REDUCAO,
                        BONUS_POSTURA_OFENSIVA_DANO, BONUS_POSTURA_OFENSIVA_DANO_RECEBIDO,
-                       CHANCE_CRITICO_MAXIMA, CHANCE_GRUPO_MONSTROS, CICLO_ELEMENTAL,
+                       CHANCE_GRUPO_MONSTROS, CICLO_ELEMENTAL,
                        CUSTO_RENOVAR_QUADRO, CUSTOS_SLOT_ACESSORIO, CUSTOS_SLOT_HABILIDADE,
                        ENCANTAMENTO_CUSTO_PRATA_BASE, ENCANTAMENTO_INCREMENTO, ENCANTAMENTO_MATERIAL,
                        ENCANTAMENTO_MAXIMO_ARMADURA, ENCANTAMENTO_MAXIMO_ARMA, FOCO_GANHO_POR_ATAQUE,
@@ -251,7 +251,7 @@ def tela_status(personagem, escrever=print, ler_acao=None, aguardar=None):
   while True:
     vida_max = equipamento.vida_maxima_efetiva(personagem)
     mana_max = equipamento.mana_maxima_efetiva(personagem)
-    critico = min(CHANCE_CRITICO_MAXIMA, batalha.chance_de_critico_base(personagem))
+    critico = batalha.chance_de_critico_base(personagem)
     linhas = [
       f'{personagem.raca} {personagem.classe} — Nv.{personagem.nivel} '
       f'(Exp {personagem.exp}/{personagem.exp_para_subir})',

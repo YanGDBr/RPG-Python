@@ -38,8 +38,8 @@ DIRETORIO_BACKUPS = DIRETORIO_BASE / 'backups'
 NUMERO_DE_SLOTS = 3
 
 # Balanceamento
-CHANCE_CRITICO_BASE = 8          # em porcentagem
-CHANCE_CRITICO_MAXIMA = 60        # nunca passa disso, por mais que se empilhe sorte/acessório/habilidade
+CHANCE_CRITICO_BASE = 8          # em porcentagem — sem teto: empilhar sorte/acessório/
+                                  # habilidade/especialização pode passar de 100%, virando crítico garantido.
 MULTIPLICADOR_CRITICO = 1.6
 MULTIPLICADOR_FRAQUEZA_ELEMENTAL = 1.5
 MULTIPLICADOR_RESISTENCIA_ELEMENTAL = 0.5
@@ -72,6 +72,11 @@ CHANCE_MONSTRO_ELITE = 15          # 1 em N encontros de monstro comum vira elit
 MULTIPLICADOR_ELITE_VIDA = 1.8
 MULTIPLICADOR_ELITE_ATAQUE = 1.4
 BONUS_ELITE_RECOMPENSA_PERCENTUAL = 100   # dobra exp/moedas e garante 1 drop extra
+
+# Bônus só na PRIMEIRA vez que se derrota cada chefe — empilha com o bônus de
+# elite se o chefe também rolar elite (não deveria acontecer na prática, mas
+# a conta continua certa se acontecer).
+BONUS_PRIMEIRO_ABATE_CHEFE_PERCENTUAL = 150
 
 # Recurso de Fúria do Cavaleiro.
 FURIA_CAVALEIRO_MAXIMA = 100

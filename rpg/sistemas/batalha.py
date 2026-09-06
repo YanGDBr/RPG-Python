@@ -16,7 +16,7 @@ from ..config import (ATORDOAMENTO_GANHO_POR_ACERTO_FRACO, ATORDOAMENTO_LIMIAR,
                        BONUS_CANALIZACAO_MAXIMO_PERCENTUAL, BONUS_ETEN_PERCENTUAL,
                        BONUS_POSTURA_DEFENSIVA_DANO, BONUS_POSTURA_DEFENSIVA_REDUCAO,
                        BONUS_POSTURA_OFENSIVA_DANO, BONUS_POSTURA_OFENSIVA_DANO_RECEBIDO,
-                       CHANCE_APLICAR_EFEITO_STATUS, CHANCE_CRITICO_BASE, CHANCE_CRITICO_MAXIMA,
+                       CHANCE_APLICAR_EFEITO_STATUS, CHANCE_CRITICO_BASE,
                        CICLO_ELEMENTAL, FOCO_ARQUEIRO_MAXIMO, FOCO_GANHO_POR_ATAQUE,
                        FOCO_GANHO_POR_CRITICO_EXTRA, FOME_CRITICA, Cor, FURIA_CAVALEIRO_MAXIMA,
                        FURIA_GANHA_AO_ATACAR, FURIA_GANHA_AO_LEVAR_DANO, LIMITE_DEBUFF_PERCENTUAL,
@@ -86,7 +86,7 @@ def chance_de_critico_base(personagem):
 
 
 def chance_de_critico(personagem, habilidade):
-  return min(CHANCE_CRITICO_MAXIMA, chance_de_critico_base(personagem) + habilidade.bonus_critico)
+  return chance_de_critico_base(personagem) + habilidade.bonus_critico
 
 
 def _dano_sem_elemento(personagem, habilidade, monstro):
