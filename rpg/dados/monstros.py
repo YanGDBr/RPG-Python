@@ -320,27 +320,30 @@ MONSTROS = {
                           'O Kraken Ancestral abate seus tentáculos ancestrais com força devastadora [Paralisia]')),
 
   # =====================================================  Cratera de Vhalos — Andar 1
+  # Cratera de Vhalos só libera depois de derrotar o Kraken Ancestral (nível
+  # 75, chefe final do Abismo Submerso) — os níveis daqui pra frente têm que
+  # ficar ACIMA disso, senão a dungeon "final" fica mais fraca que a anterior.
   'Corrompido Errante': MonstroBase(
-      nome='Corrompido Errante', vida_maxima=1300, ataque_min=225, ataque_max=250, nivel=47,
+      nome='Corrompido Errante', vida_maxima=1300, ataque_min=225, ataque_max=250, nivel=76,
       elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio',),
       exp_min=350, exp_max=450, moedas_min=300, moedas_max=400,
       descricoes_ataque=('O Corrompido Errante avança sem rosto, só instinto',
                           'O Corrompido Errante golpeia com um braço que já não é mais um braço')),
   'Sombra Cinzenta': MonstroBase(
-      nome='Sombra Cinzenta', vida_maxima=1250, ataque_min=230, ataque_max=255, nivel=48,
+      nome='Sombra Cinzenta', vida_maxima=1250, ataque_min=230, ataque_max=255, nivel=78,
       elemento='Sombrio', fraquezas=('Fogo', 'Eletrico'), resistencias=('Fisico',),
       efeito_aplicado='Vulnerabilidade', turnos_efeito_aplicado=2,
       exp_min=360, exp_max=460, moedas_min=310, moedas_max=410,
       descricoes_ataque=('A Sombra Cinzenta te envolve, e por um instante você se sente mais fraco [Vulnerabilidade]',
                           'A Sombra Cinzenta atravessa você como se você também fosse feito de sombra')),
   'Golem de Cinzas': MonstroBase(
-      nome='Golem de Cinzas', vida_maxima=1550, ataque_min=220, ataque_max=245, nivel=48,
+      nome='Golem de Cinzas', vida_maxima=1550, ataque_min=220, ataque_max=245, nivel=80,
       resistencias=('Fisico', 'Sombrio'), fraquezas=('Eletrico',),
       exp_min=370, exp_max=470, moedas_min=320, moedas_max=420,
       descricoes_ataque=('O Golem de Cinzas desmorona sobre você e se reforma em seguida',
                           'O Golem de Cinzas solta uma nuvem de cinza que arde nos olhos')),
   'O Consumido': MonstroBase(
-      nome='O Consumido', vida_maxima=14400, ataque_min=260, ataque_max=290, nivel=49,
+      nome='O Consumido', vida_maxima=14400, ataque_min=260, ataque_max=290, nivel=84,
       elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio', 'Fisico'), chefe=True,
       tem_investida_especial=True,
       efeito_aplicado='Vulnerabilidade', turnos_efeito_aplicado=3,
@@ -351,13 +354,13 @@ MONSTROS = {
 
   # =====================================================  Cratera de Vhalos — Andar 2 (Trono)
   'Guarda Cinza': MonstroBase(
-      nome='Guarda Cinza', vida_maxima=1800, ataque_min=250, ataque_max=280, nivel=49,
+      nome='Guarda Cinza', vida_maxima=1800, ataque_min=250, ataque_max=280, nivel=86,
       elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio', 'Fisico'),
       exp_min=420, exp_max=520, moedas_min=360, moedas_max=460,
       descricoes_ataque=('O Guarda Cinza ataca em silêncio absoluto, como se nem respirasse',
                           'O Guarda Cinza ergue uma lâmina cinzenta que não reflete luz nenhuma')),
   'Vashtar, o Rei Cinza': MonstroBase(
-      nome='Vashtar, o Rei Cinza', vida_maxima=18000, ataque_min=280, ataque_max=350, nivel=50,
+      nome='Vashtar, o Rei Cinza', vida_maxima=18000, ataque_min=280, ataque_max=350, nivel=90,
       elemento='Sombrio', fraquezas=('Fogo',), resistencias=('Sombrio', 'Fisico'), chefe=True,
       tem_investida_especial=True, tem_fase_furiosa=True,
       efeito_aplicado='Vulnerabilidade', turnos_efeito_aplicado=3,

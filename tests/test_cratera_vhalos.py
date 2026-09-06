@@ -26,6 +26,32 @@ def test_vashtar_esta_entre_os_chefes_de_maior_ataque():
   assert mais_ataque.nome == VASHTAR
 
 
+def test_vashtar_e_o_chefe_de_maior_nivel_do_jogo():
+  """Regressão: o nível dos monstros da Cratera de Vhalos (dungeon final, só
+  libera depois de derrotar o Kraken Ancestral, nível 75) estava por engano
+  mais baixo que o de dungeons anteriores — o chefe final tinha nível 50,
+  menor até que chefes do meio do jogo."""
+  chefes = [m for m in MONSTROS.values() if m.chefe]
+  maior_nivel = max(chefes, key=lambda m: m.nivel)
+  assert maior_nivel.nome == VASHTAR
+
+
+def test_cratera_de_vhalos_tem_nivel_acima_da_dungeon_anterior():
+  """O menor nível de monstro da Cratera de Vhalos precisa ficar acima do
+  maior nível do Abismo Submerso (a dungeon que precisa ser zerada antes de
+  liberar a Cratera) — senão a dungeon "final" fica mais fraca que a
+  penúltima, o que não faz sentido de progressão."""
+  nivel_maximo_abismo = max(
+      MONSTROS[nome].nivel
+      for andar in DUNGEONS['abismo_submerso'].andares
+      for nome in [*andar.monstros_comuns, andar.chefe])
+  nivel_minimo_cratera = min(
+      MONSTROS[nome].nivel
+      for andar in DUNGEONS['cratera_vhalos'].andares
+      for nome in [*andar.monstros_comuns, andar.chefe])
+  assert nivel_minimo_cratera > nivel_maximo_abismo
+
+
 def test_vashtar_tem_investida_especial_e_nao_foge():
   vashtar = MONSTROS[VASHTAR]
   assert vashtar.tem_investida_especial is True

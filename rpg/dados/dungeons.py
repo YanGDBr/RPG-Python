@@ -70,12 +70,15 @@ DUNGEONS = {
   'cratera_vhalos': Dungeon(
       id='cratera_vhalos',
       nome='Cratera de Vhalos',
+      # A dungeon final de verdade — só libera depois do Kraken Ancestral
+      # (nível 75, chefe final do Abismo Submerso), então os níveis
+      # recomendados aqui têm que ficar acima disso.
       requer_chefe_derrotado='Kraken Ancestral',
       andares=[
-        Andar(1, 'A Descida na Cratera', 'Recomendado para níveis 45+',
+        Andar(1, 'A Descida na Cratera', 'Recomendado para níveis 76+',
               ['Corrompido Errante', 'Sombra Cinzenta', 'Golem de Cinzas'], 'O Consumido',
               chance_encontrar_chefe=6),
-        Andar(2, 'O Trono do Rei Cinza', 'Recomendado para níveis 48+',
+        Andar(2, 'O Trono do Rei Cinza', 'Recomendado para níveis 85+',
               ['Guarda Cinza'], 'Vashtar, o Rei Cinza', chance_encontrar_chefe=5),
       ]),
 }
